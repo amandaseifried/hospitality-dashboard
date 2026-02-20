@@ -1,0 +1,5 @@
+<svg width="220" height="50" viewBox="0 0 220 50" xmlns="http://www.w3.org/2000/svg">
+  <text x="110" y="30" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="bold" fill="#A40034" text-anchor="middle" letter-spacing="4">MARRIOTT</text>
+  <line x1="30" y1="40" x2="190" y2="40" stroke="#A40034" stroke-width="1.5"/>
+  <text x="110" y="48" font-family="Arial, sans-serif" font-size="7" fill="#A40034" text-anchor="middle" letter-spacing="2">INTERNATIONAL</text>
+</svg>
