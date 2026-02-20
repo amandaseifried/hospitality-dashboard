@@ -91,6 +91,90 @@ def render_sources(key):
         unsafe_allow_html=True,
     )
 
+
+# ── News table helpers — global scope so Tab 3 and Tab 5 both have access ─────
+_month_abbr = {m: i for i, m in enumerate(_calendar.month_abbr) if m}
+
+
+def _date_key(d):
+    parts = str(d).split()
+    if len(parts) == 2:
+        try:
+            return int(parts[1]) * 100 + _month_abbr.get(parts[0], 0)
+        except Exception:
+            pass
+    return 0
+
+
+def _news_table_html(df, table_class, col3_header):
+    rows_html = ""
+    for _, row in df.iterrows():
+        company  = str(row["Company"]) if pd.notna(row["Company"]) else ""
+        brand    = row["Brand"] if str(row["Brand"]) not in ("N/A", "nan", "") else "N/A"
+        news     = row["News"]
+        date     = str(row["Date"]) if pd.notna(row["Date"]) else ""
+        src_name = str(row["SourceName"]) if pd.notna(row["SourceName"]) else ""
+        src_url  = str(row["SourceURL"]) if pd.notna(row["SourceURL"]) else "#"
+        color    = COLORS.get(company, "#888")
+        is_quote = pd.notna(news) and str(news).strip().startswith(('"', '\u201c'))
+        news_safe = str(news).replace("&", "&amp;") if pd.notna(news) else ""
+        news_display = f'<em style="color:#444;">{news_safe}</em>' if is_quote else news_safe
+        brand_safe = str(brand).replace("&", "&amp;")
+        brand_badge = (
+            f'<span style="font-size:0.78rem; color:#fff; background:{color}; '
+            f'border-radius:4px; padding:2px 7px; white-space:nowrap;">{brand_safe}</span>'
+            if brand != "N/A"
+            else '<span style="color:#bbb; font-size:0.82rem;">—</span>'
+        )
+        company_safe = company.replace("&", "&amp;")
+        src_name_safe = src_name.replace("&", "&amp;")
+        rows_html += (
+            f'<tr>'
+            f'<td style="font-weight:600; color:{color}; white-space:nowrap;">{company_safe}</td>'
+            f'<td style="text-align:center;">{brand_badge}</td>'
+            f'<td style="font-size:0.84rem; line-height:1.55;">{news_display}</td>'
+            f'<td style="white-space:nowrap; color:#888; font-size:0.82rem;">{date}</td>'
+            f'<td style="white-space:nowrap; font-size:0.82rem;">'
+            f'<a href="{src_url}" target="_blank" '
+            f'style="color:#555; text-decoration:underline; text-underline-offset:2px;">'
+            f'{src_name_safe}</a></td>'
+            f'</tr>'
+        )
+    return f"""
+    <style>
+      .{table_class} {{
+        width: 100%; border-collapse: collapse;
+        font-family: Inter, Helvetica, Arial, sans-serif;
+        font-size: 0.85rem; color: #111;
+      }}
+      .{table_class} th {{
+        background: #f5f5f5; color: #444; font-weight: 600;
+        font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em;
+        padding: 10px 14px; text-align: left; border-bottom: 2px solid #e0e0e0;
+        white-space: nowrap;
+      }}
+      .{table_class} td {{
+        padding: 11px 14px; border-bottom: 1px solid #f0f0f0;
+        vertical-align: top; background: #fff;
+      }}
+      .{table_class} tr:hover td {{ background: #fafafa; }}
+    </style>
+    <div style="overflow-x:auto; border:1px solid #eeeeee; border-radius:8px; margin-top:8px;">
+      <table class="{table_class}">
+        <thead>
+          <tr>
+            <th style="width:9%;">Company</th>
+            <th style="width:11%; text-align:center;">Brand</th>
+            <th style="width:54%;">{col3_header}</th>
+            <th style="width:9%;">Date</th>
+            <th style="width:17%;">Source</th>
+          </tr>
+        </thead>
+        <tbody>{rows_html}</tbody>
+      </table>
+    </div>
+    """
+
 # ── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Hospitality Competitive Intelligence",
@@ -703,17 +787,6 @@ with tab3:
         )
 
     # ── Apply filters & sort ───────────────────────────────────────────────────
-    _month_abbr = {m: i for i, m in enumerate(_calendar.month_abbr) if m}
-
-    def _date_key(d):
-        parts = str(d).split()
-        if len(parts) == 2:
-            try:
-                return int(parts[1]) * 100 + _month_abbr.get(parts[0], 0)
-            except Exception:
-                pass
-        return 0
-
     _lux_display = luxury_news.copy()
     if _lux_co_filter:
         _lux_display = _lux_display[_lux_display["Company"].isin(_lux_co_filter)]
@@ -721,75 +794,6 @@ with tab3:
         _lux_display = _lux_display[_lux_display["Brand"].isin(_lux_brand_filter)]
     _lux_display["_sort"] = _lux_display["Date"].apply(_date_key)
     _lux_display = _lux_display.sort_values("_sort", ascending=(_lux_sort == "Oldest First"))
-
-    # ── Build HTML table ───────────────────────────────────────────────────────
-    def _news_table_html(df, table_class, col3_header):
-        rows_html = ""
-        for _, row in df.iterrows():
-            company  = row["Company"]
-            brand    = row["Brand"] if str(row["Brand"]) not in ("N/A", "nan", "") else "N/A"
-            news     = row["News"]
-            date     = row["Date"]
-            src_name = row["SourceName"]
-            src_url  = row["SourceURL"]
-            color    = COLORS.get(company, "#888")
-            is_quote = pd.notna(news) and str(news).strip().startswith(('"', '\u201c'))
-            news_safe = str(news).replace("&", "&amp;") if pd.notna(news) else ""
-            news_display = f'<em style="color:#444;">{news_safe}</em>' if is_quote else news_safe
-            brand_safe = str(brand).replace("&", "&amp;")
-            brand_badge = (
-                f'<span style="font-size:0.78rem; color:#fff; background:{color}; '
-                f'border-radius:4px; padding:2px 7px; white-space:nowrap;">{brand_safe}</span>'
-                if brand != "N/A"
-                else '<span style="color:#bbb; font-size:0.82rem;">—</span>'
-            )
-            company_safe = str(company).replace("&", "&amp;")
-            rows_html += (
-                f'<tr>'
-                f'<td style="font-weight:600; color:{color}; white-space:nowrap;">{company_safe}</td>'
-                f'<td style="text-align:center;">{brand_badge}</td>'
-                f'<td style="font-size:0.84rem; line-height:1.55;">{news_display}</td>'
-                f'<td style="white-space:nowrap; color:#888; font-size:0.82rem;">{date}</td>'
-                f'<td style="white-space:nowrap; font-size:0.82rem;">'
-                f'<a href="{src_url}" target="_blank" '
-                f'style="color:#555; text-decoration:underline; text-underline-offset:2px;">'
-                f'{src_name}</a></td>'
-                f'</tr>'
-            )
-        return f"""
-        <style>
-          .{table_class} {{
-            width: 100%; border-collapse: collapse;
-            font-family: Inter, Helvetica, Arial, sans-serif;
-            font-size: 0.85rem; color: #111;
-          }}
-          .{table_class} th {{
-            background: #f5f5f5; color: #444; font-weight: 600;
-            font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em;
-            padding: 10px 14px; text-align: left; border-bottom: 2px solid #e0e0e0;
-            white-space: nowrap;
-          }}
-          .{table_class} td {{
-            padding: 11px 14px; border-bottom: 1px solid #f0f0f0;
-            vertical-align: top; background: #fff;
-          }}
-          .{table_class} tr:hover td {{ background: #fafafa; }}
-        </style>
-        <div style="overflow-x:auto; border:1px solid #eeeeee; border-radius:8px; margin-top:8px;">
-          <table class="{table_class}">
-            <thead>
-              <tr>
-                <th style="width:9%;">Company</th>
-                <th style="width:11%; text-align:center;">Brand</th>
-                <th style="width:54%;">{col3_header}</th>
-                <th style="width:9%;">Date</th>
-                <th style="width:17%;">Source</th>
-              </tr>
-            </thead>
-            <tbody>{rows_html}</tbody>
-          </table>
-        </div>
-        """
 
     st.markdown(
         _news_table_html(_lux_display, "lux-news-table", "Luxury News / Earnings Quote"),
@@ -840,7 +844,7 @@ with tab4:
         line=dict(color="#555", width=2.5, dash="dot"),
         marker=dict(size=11, color=[COLORS.get(c, "#888") for c in _cos],
                     line=dict(color="#333", width=1.5)),
-        text=[f"{v:+.1f}%" if v is not None else "" for v in _g],
+        text=[f"{v:+.1f}%" if (v is not None and v == v) else "" for v in _g],
         textposition="top center", textfont=dict(size=11, color="#333"),
         yaxis="y2",
     ))
@@ -848,7 +852,7 @@ with tab4:
         **_OP_THEME, height=440, barmode="group",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                     font=dict(size=12, color="#111")),
-        xaxis=dict(**_AXIS, tickfont=dict(color="#111", size=13)),
+        xaxis={**_AXIS, "tickfont": dict(color="#111", size=13)},
         yaxis=dict(**_AXIS, title="Avg RevPAR ($)",
                    title_font=dict(color="#111", size=13,
                                    family="Inter, Helvetica, Arial, sans-serif")),
