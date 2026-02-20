@@ -45,24 +45,59 @@ def get_company_info(tickers: dict) -> pd.DataFrame:
     """
     rows = []
     for company, ticker in tickers.items():
+        row = {
+            "Company": company, "Ticker": ticker,
+            "Price": None, "Market Cap ($B)": None,
+            "P/E Ratio": None, "Forward P/E": None,
+            "EV/EBITDA": None, "52W High": None,
+            "52W Low": None, "Dividend Yield (%)": None,
+            "YTD Return (%)": None,
+        }
         try:
             stock = yf.Ticker(ticker)
-            info = stock.info
-            rows.append({
-                "Company": company,
-                "Ticker": ticker,
-                "Price": info.get("currentPrice") or info.get("regularMarketPrice"),
-                "Market Cap ($B)": (info.get("marketCap") or 0) / 1e9,
-                "P/E Ratio": info.get("trailingPE"),
-                "Forward P/E": info.get("forwardPE"),
-                "EV/EBITDA": info.get("enterpriseToEbitda"),
-                "52W High": info.get("fiftyTwoWeekHigh"),
-                "52W Low": info.get("fiftyTwoWeekLow"),
-                "Dividend Yield (%)": (info.get("dividendYield") or 0) * 100,
-                "YTD Return (%)": None,  # Calculated from price data
-            })
+            # fast_info is more reliable than stock.info in cloud environments
+            fi = stock.fast_info
+            price = getattr(fi, "last_price", None)
+            mcap = getattr(fi, "market_cap", None)
+            if price:
+                row["Price"] = float(price)
+            if mcap:
+                row["Market Cap ($B)"] = float(mcap) / 1e9
+            yh = getattr(fi, "year_high", None)
+            yl = getattr(fi, "year_low", None)
+            if yh:
+                row["52W High"] = float(yh)
+            if yl:
+                row["52W Low"] = float(yl)
         except Exception:
-            rows.append({"Company": company, "Ticker": ticker})
+            pass
+        try:
+            info = stock.info or {}
+            if info and len(info) > 5:  # non-empty info dict
+                pe = info.get("trailingPE")
+                fpe = info.get("forwardPE")
+                ev = info.get("enterpriseToEbitda")
+                div = info.get("dividendYield")
+                if pe:
+                    row["P/E Ratio"] = float(pe)
+                if fpe:
+                    row["Forward P/E"] = float(fpe)
+                if ev:
+                    row["EV/EBITDA"] = float(ev)
+                if div:
+                    row["Dividend Yield (%)"] = float(div) * 100
+                # Fallback price from info if fast_info missed it
+                if row["Price"] is None:
+                    p = info.get("currentPrice") or info.get("regularMarketPrice")
+                    if p:
+                        row["Price"] = float(p)
+                if row["Market Cap ($B)"] is None:
+                    mc = info.get("marketCap")
+                    if mc:
+                        row["Market Cap ($B)"] = float(mc) / 1e9
+        except Exception:
+            pass
+        rows.append(row)
 
     return pd.DataFrame(rows)
 

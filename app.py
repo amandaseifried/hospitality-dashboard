@@ -266,7 +266,7 @@ with tab1:
             name="# of Properties",
             marker_color=[COLORS.get(c, "#888") for c in latest["Company"]],
             opacity=0.85,
-            text=latest["Properties"].apply(lambda x: f"{x:,.0f}"),
+            text=latest["Properties"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else ""),
             textposition="outside",
             yaxis="y",
             offsetgroup=0,
@@ -277,7 +277,7 @@ with tab1:
             name="# of Rooms",
             marker_color=[COLORS.get(c, "#888") for c in latest["Company"]],
             opacity=0.4,
-            text=latest["System-wide Rooms"].apply(lambda x: f"{x:,.0f}"),
+            text=latest["System-wide Rooms"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else ""),
             textposition="outside",
             yaxis="y2",
             offsetgroup=1,
@@ -526,6 +526,8 @@ with tab2:
     ]
 
     def _fmt_yoy(curr_val, prior_df, company, col):
+        if not pd.notna(curr_val):
+            return '<span style="color:#bbb;">—</span>'
         row = prior_df[prior_df["Company"] == company]
         if row.empty:
             return '<span style="color:#bbb;">—</span>'
@@ -555,9 +557,10 @@ with tab2:
         _td = ""
         for col, _, fmt in _metrics:
             val = crow.iloc[0][col]
+            fmt_val = fmt.format(val) if pd.notna(val) else "N/A"
             _td += (
                 f'<td style="text-align:right; font-variant-numeric:tabular-nums;">'
-                f'{fmt.format(val)}</td>'
+                f'{fmt_val}</td>'
                 f'<td style="text-align:center;">{_fmt_yoy(val, _prev, company, col)}</td>'
             )
         _rows += (
@@ -730,10 +733,10 @@ with tab3:
             src_name = row["SourceName"]
             src_url  = row["SourceURL"]
             color    = COLORS.get(company, "#888")
-            is_quote = news.strip().startswith(('"', '\u201c'))
-            news_safe = str(news).replace("&", "&amp;")
+            is_quote = pd.notna(news) and str(news).strip().startswith(('"', '\u201c'))
+            news_safe = str(news).replace("&", "&amp;") if pd.notna(news) else ""
             news_display = f'<em style="color:#444;">{news_safe}</em>' if is_quote else news_safe
-            brand_safe = brand.replace("&", "&amp;")
+            brand_safe = str(brand).replace("&", "&amp;")
             brand_badge = (
                 f'<span style="font-size:0.78rem; color:#fff; background:{color}; '
                 f'border-radius:4px; padding:2px 7px; white-space:nowrap;">{brand_safe}</span>'
@@ -901,10 +904,13 @@ with tab4:
     st.markdown("## ADR vs Occupancy — Q4 2025")
     if not _q4.empty:
         _max_rooms = float(_q4["System-wide Rooms"].max())
+        if not pd.notna(_max_rooms) or _max_rooms == 0:
+            _max_rooms = 1
         fig_sc = go.Figure()
         for _, r in _q4.iterrows():
             co = str(r["Company"])
-            sz = max(14, int(float(r["System-wide Rooms"]) / _max_rooms * 55))
+            _sz_raw = float(r["System-wide Rooms"]) / _max_rooms * 55 if pd.notna(r["System-wide Rooms"]) else 0
+            sz = max(14, int(_sz_raw) if pd.notna(_sz_raw) and _sz_raw == _sz_raw else 20)
             fig_sc.add_trace(go.Scatter(
                 x=[float(r["Occupancy %"])], y=[float(r["ADR"])],
                 mode="markers+text", name=co,
