@@ -106,7 +106,48 @@ def _date_key(d):
     return 0
 
 
+def _year_from_date(d):
+    parts = str(d).split()
+    if len(parts) == 2:
+        try:
+            return int(parts[1])
+        except Exception:
+            pass
+    return 0
+
+
+def _is_direct_quote(news):
+    if not pd.notna(news):
+        return False
+    return str(news).strip().startswith(('"', '\u201c', '\u2018'))
+
+
 def _news_table_html(df, table_class, col3_header):
+    # Sort newest first
+    df = df.copy()
+    df["_sort"] = df["Date"].apply(_date_key)
+    df = df.sort_values("_sort", ascending=False)
+
+    # Company chip filter bar (only companies present in this dataset)
+    companies = [c for c in ["Marriott", "Hilton", "Hyatt", "IHG", "Accor"]
+                 if c in df["Company"].values]
+    chips_html = (
+        '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center;">'
+        '<span style="font-size:0.72rem; font-weight:700; color:#aaa; text-transform:uppercase; '
+        'letter-spacing:0.06em; margin-right:2px;">Filter:</span>'
+    )
+    for company in companies:
+        color = COLORS.get(company, "#888")
+        chips_html += (
+            f'<button class="nchip" data-company="{company}" data-table="{table_class}" '
+            f'data-color="{color}" '
+            f'style="padding:4px 14px; border-radius:20px; border:1.5px solid {color}; '
+            f'background:transparent; color:{color}; cursor:pointer; font-size:0.82rem; '
+            f'font-weight:600; font-family:Inter,Helvetica,Arial,sans-serif; '
+            f'transition:all 0.15s;" onclick="newsChipToggle(this)">{company}</button>'
+        )
+    chips_html += '</div>'
+
     rows_html = ""
     for _, row in df.iterrows():
         company  = str(row["Company"]) if pd.notna(row["Company"]) else ""
@@ -116,9 +157,9 @@ def _news_table_html(df, table_class, col3_header):
         src_name = str(row["SourceName"]) if pd.notna(row["SourceName"]) else ""
         src_url  = str(row["SourceURL"]) if pd.notna(row["SourceURL"]) else "#"
         color    = COLORS.get(company, "#888")
-        is_quote = pd.notna(news) and str(news).strip().startswith(('"', '\u201c'))
         news_safe = str(news).replace("&", "&amp;") if pd.notna(news) else ""
-        news_display = f'<em style="color:#444;">{news_safe}</em>' if is_quote else news_safe
+        # All rows in the table are direct quotes — render in italics
+        news_display = f'<em style="color:#333;">{news_safe}</em>'
         brand_safe = str(brand).replace("&", "&amp;")
         brand_badge = (
             f'<span style="font-size:0.78rem; color:#fff; background:{color}; '
@@ -129,10 +170,10 @@ def _news_table_html(df, table_class, col3_header):
         company_safe = company.replace("&", "&amp;")
         src_name_safe = src_name.replace("&", "&amp;")
         rows_html += (
-            f'<tr>'
+            f'<tr data-company="{company}">'
             f'<td style="font-weight:600; color:{color}; white-space:nowrap;">{company_safe}</td>'
             f'<td style="text-align:center;">{brand_badge}</td>'
-            f'<td style="font-size:0.84rem; line-height:1.55;">{news_display}</td>'
+            f'<td style="font-size:0.84rem; line-height:1.6;">{news_display}</td>'
             f'<td style="white-space:nowrap; color:#888; font-size:0.82rem;">{date}</td>'
             f'<td style="white-space:nowrap; font-size:0.82rem;">'
             f'<a href="{src_url}" target="_blank" '
@@ -140,6 +181,29 @@ def _news_table_html(df, table_class, col3_header):
             f'{src_name_safe}</a></td>'
             f'</tr>'
         )
+
+    script = """
+    <script>
+    if (!window._newsChipReady) {
+      window._newsChipReady = true;
+      window.newsChipToggle = function(btn) {
+        var color = btn.getAttribute('data-color');
+        var tclass = btn.getAttribute('data-table');
+        var isActive = btn.classList.toggle('nchip-on');
+        btn.style.background = isActive ? color : 'transparent';
+        btn.style.color = isActive ? '#fff' : color;
+        var active = [];
+        document.querySelectorAll('.nchip[data-table="' + tclass + '"]').forEach(function(c) {
+          if (c.classList.contains('nchip-on')) active.push(c.getAttribute('data-company'));
+        });
+        document.querySelectorAll('.' + tclass + ' tbody tr').forEach(function(r) {
+          r.style.display = (active.length === 0 || active.indexOf(r.getAttribute('data-company')) !== -1) ? '' : 'none';
+        });
+      };
+    }
+    </script>
+    """
+
     return f"""
     <style>
       .{table_class} {{
@@ -159,7 +223,9 @@ def _news_table_html(df, table_class, col3_header):
       }}
       .{table_class} tr:hover td {{ background: #fafafa; }}
     </style>
-    <div style="overflow-x:auto; border:1px solid #eeeeee; border-radius:8px; margin-top:8px;">
+    <div style="overflow-x:auto; border:1px solid #eeeeee; border-radius:8px;
+                margin-top:8px; padding:14px 16px 0 16px; background:#fff;">
+      {chips_html}
       <table class="{table_class}">
         <thead>
           <tr>
@@ -173,6 +239,7 @@ def _news_table_html(df, table_class, col3_header):
         <tbody>{rows_html}</tbody>
       </table>
     </div>
+    {script}
     """
 
 # ── Page Config ──────────────────────────────────────────────────────────────
@@ -411,6 +478,9 @@ with tab1:
                 if not row.empty:
                     price = row.iloc[0].get("Price")
                     st.metric(company, f"${price:,.2f}" if pd.notna(price) else "N/A")
+        if "_fetched_at" in company_info.columns:
+            _ft = company_info.iloc[0]["_fetched_at"]
+            st.caption(f"Last updated: {_ft.strftime('%b %d, %Y %I:%M %p')}")
 
         # Market cap row with title
         st.markdown("### Market Capitalization")
@@ -758,45 +828,14 @@ with tab3:
     # ── Luxury News & Earnings Tracker ────────────────────────────────────────
     st.markdown("## Luxury News & Earnings Tracker")
 
-    # ── Filter & sort controls ─────────────────────────────────────────────────
-    _lf1, _lf2, _lf3 = st.columns([2, 2, 1])
-    with _lf1:
-        _lux_co_filter = st.multiselect(
-            "Filter by Company",
-            options=sorted(luxury_news["Company"].dropna().unique()),
-            placeholder="All companies",
-            key="lux_co_filter",
-        )
-    with _lf2:
-        _brand_opts = sorted([
-            b for b in luxury_news["Brand"].dropna().unique()
-            if str(b) not in ("N/A", "nan", "")
-        ])
-        _lux_brand_filter = st.multiselect(
-            "Filter by Brand",
-            options=_brand_opts,
-            placeholder="All brands",
-            key="lux_brand_filter",
-        )
-    with _lf3:
-        _lux_sort = st.selectbox(
-            "Sort",
-            options=["Newest First", "Oldest First"],
-            index=0,
-            key="lux_sort",
-        )
-
-    # ── Apply filters & sort ───────────────────────────────────────────────────
-    _lux_display = luxury_news.copy()
-    if _lux_co_filter:
-        _lux_display = _lux_display[_lux_display["Company"].isin(_lux_co_filter)]
-    if _lux_brand_filter:
-        _lux_display = _lux_display[_lux_display["Brand"].isin(_lux_brand_filter)]
-    _lux_display["_sort"] = _lux_display["Date"].apply(_date_key)
-    _lux_display = _lux_display.sort_values("_sort", ascending=(_lux_sort == "Oldest First"))
+    # ── 2025–2026 direct quotes only ───────────────────────────────────────────
+    _lux_display = luxury_news[
+        luxury_news["Date"].apply(lambda d: _year_from_date(d) >= 2025) &
+        luxury_news["News"].apply(_is_direct_quote)
+    ]
 
     st.markdown(
-        _news_table_html(_lux_display, "lux-news-table", "Luxury News / Earnings Quote"),
+        _news_table_html(_lux_display, "lux-news-table", "Earnings / Press Release Quote"),
         unsafe_allow_html=True,
     )
 
@@ -1083,43 +1122,14 @@ with tab5:
     # ── Digital, Personalization & AI News ───────────────────────────────────
     st.markdown("## Digital, Personalization & AI News")
 
-    _df1, _df2, _df3 = st.columns([2, 2, 1])
-    with _df1:
-        _dig_co_filter = st.multiselect(
-            "Filter by Company",
-            options=sorted(digital_news["Company"].dropna().unique()),
-            placeholder="All companies",
-            key="dig_co_filter",
-        )
-    with _df2:
-        _dig_brand_opts = sorted([
-            b for b in digital_news["Brand"].dropna().unique()
-            if str(b) not in ("N/A", "nan", "")
-        ])
-        _dig_brand_filter = st.multiselect(
-            "Filter by Brand / Product",
-            options=_dig_brand_opts,
-            placeholder="All brands",
-            key="dig_brand_filter",
-        )
-    with _df3:
-        _dig_sort = st.selectbox(
-            "Sort",
-            options=["Newest First", "Oldest First"],
-            index=0,
-            key="dig_sort",
-        )
-
-    _dig_display = digital_news.copy()
-    if _dig_co_filter:
-        _dig_display = _dig_display[_dig_display["Company"].isin(_dig_co_filter)]
-    if _dig_brand_filter:
-        _dig_display = _dig_display[_dig_display["Brand"].isin(_dig_brand_filter)]
-    _dig_display["_sort"] = _dig_display["Date"].apply(_date_key)
-    _dig_display = _dig_display.sort_values("_sort", ascending=(_dig_sort == "Oldest First"))
+    # ── 2025–2026 direct quotes only ───────────────────────────────────────────
+    _dig_display = digital_news[
+        digital_news["Date"].apply(lambda d: _year_from_date(d) >= 2025) &
+        digital_news["News"].apply(_is_direct_quote)
+    ]
 
     st.markdown(
-        _news_table_html(_dig_display, "dig-news-table", "Digital / AI News"),
+        _news_table_html(_dig_display, "dig-news-table", "Digital / AI Quote"),
         unsafe_allow_html=True,
     )
 

@@ -43,6 +43,7 @@ def get_company_info(tickers: dict) -> pd.DataFrame:
     Returns:
         DataFrame with one row per company.
     """
+    fetch_time = datetime.now()
     rows = []
     for company, ticker in tickers.items():
         row = {
@@ -99,7 +100,9 @@ def get_company_info(tickers: dict) -> pd.DataFrame:
             pass
         rows.append(row)
 
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    df["_fetched_at"] = fetch_time
+    return df
 
 
 @st.cache_data(ttl=3600)
