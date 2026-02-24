@@ -555,6 +555,8 @@ with tab1:
             unsafe_allow_html=True,
         )
 
+        st.caption("P/E, Forward P/E, EV/EBITDA, Dividend Yield as of FY2025. 52W High/Low and stock prices are live.")
+
     render_sources("company_overview")
 
 
