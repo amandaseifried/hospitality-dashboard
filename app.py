@@ -17,7 +17,7 @@ from utils.data_loader import (
     load_hotel_kpis, load_hotel_financials_annual,
     load_luxury_brands, load_luxury_news, load_digital_trends,
     load_loyalty_historical, load_digital_news,
-    get_latest_quarter, get_logo_path
+    get_latest_quarter, get_latest_per_company, get_logo_path
 )
 import calendar as _calendar
 from utils.charts import (
@@ -591,17 +591,17 @@ with tab2:
 
     view_mode = st.session_state["fin_view_mode"]
 
-    QUARTERS_2025 = ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025"]
-    QUARTERS_2024 = ["Q1 2024", "Q2 2024", "Q3 2024", "Q4 2024"]
+    CURR_QUARTERS = QUARTERS[-4:]
+    PREV_QUARTERS = [f"{q.split()[0]} {int(q.split()[1]) - 1}" for q in CURR_QUARTERS]
     ANNUAL_YEARS  = [2022, 2023, 2024, 2025]
 
     is_quarterly = (view_mode == "Quarterly")
 
     if is_quarterly:
-        df_curr      = hotel_kpis[hotel_kpis["Quarter"].isin(QUARTERS_2025)].copy()
-        df_prev      = hotel_kpis[hotel_kpis["Quarter"].isin(QUARTERS_2024)].copy()
+        df_curr      = hotel_kpis[hotel_kpis["Quarter"].isin(CURR_QUARTERS)].copy()
+        df_prev      = hotel_kpis[hotel_kpis["Quarter"].isin(PREV_QUARTERS)].copy()
         period_col   = "Quarter"
-        period_order = QUARTERS_2025
+        period_order = CURR_QUARTERS
         chart_prefix = "Quarterly"
     else:
         df_curr      = hotel_financials_annual[
@@ -848,9 +848,9 @@ with tab3:
 # TAB 4: OPERATIONAL OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    _Q25 = ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025"]
-    _Q24 = ["Q1 2024", "Q2 2024", "Q3 2024", "Q4 2024"]
-    _q4  = hotel_kpis[hotel_kpis["Quarter"] == "Q4 2025"].copy()
+    _Q25 = QUARTERS[-4:]
+    _Q24 = [f"{q.split()[0]} {int(q.split()[1]) - 1}" for q in _Q25]
+    _q4  = get_latest_per_company(hotel_kpis).copy()
 
     _OP_THEME = dict(
         template="none",
@@ -861,8 +861,9 @@ with tab4:
     _AXIS = dict(gridcolor="#ebebeb", showline=True, linecolor="#ccc",
                  tickfont=dict(color="#111", size=12))
 
-    # ── Full-width RevPAR combo chart (FY 2025 avg vs FY 2024 avg) ────────────
-    st.markdown("## RevPAR — Full Year 2025")
+    # ── Full-width RevPAR combo chart (rolling 4Q avg vs prior 4Q avg) ───────
+    _revpar_label = f"{_Q25[0]}–{_Q25[-1]}"
+    st.markdown(f"## RevPAR — Rolling 4 Quarters ({_revpar_label})")
 
     _fy25 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)]
     _fy24 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q24)]
@@ -874,7 +875,7 @@ with tab4:
     fig_revpar = go.Figure()
     fig_revpar.add_trace(go.Bar(
         x=_cos, y=[float(_rp25[c]) for c in _cos],
-        name="FY 2025 Avg RevPAR",
+        name=f"Avg RevPAR ({_revpar_label})",
         marker_color=[COLORS.get(c, "#888") for c in _cos],
         opacity=0.85, yaxis="y",
     ))
