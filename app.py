@@ -477,7 +477,9 @@ with tab1:
                 row = company_info[company_info["Company"] == company]
                 if not row.empty:
                     price = row.iloc[0].get("Price")
-                    st.metric(company, f"${price:,.2f}" if pd.notna(price) else "N/A")
+                    ticker = TICKERS.get(company, "")
+                    currency = "€" if ticker.endswith(".PA") else "$"
+                    st.metric(company, f"{currency}{price:,.2f}" if pd.notna(price) else "N/A")
         if "_fetched_at" in company_info.columns:
             _ft = company_info.iloc[0]["_fetched_at"]
             st.caption(f"Last updated: {_ft.strftime('%b %d, %Y %I:%M %p')}")
@@ -555,7 +557,7 @@ with tab1:
             unsafe_allow_html=True,
         )
 
-        st.caption("P/E, Forward P/E, EV/EBITDA, Dividend Yield as of FY2025. 52W High/Low and stock prices are live.")
+        st.caption("P/E, Forward P/E, EV/EBITDA, Dividend Yield as of FY2025. 52W High/Low and stock prices are live. Accor price and 52W range in EUR (Paris: AC.PA).")
 
     render_sources("company_overview")
 

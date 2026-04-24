@@ -31,7 +31,7 @@ COMPANIES = {
         "segments": ["Luxury", "Upper Upscale", "Upscale", "Inclusive Collection"],
     },
     "Accor": {
-        "ticker": "ACCYY",
+        "ticker": "AC.PA",
         "color": "#C4A962",  # Accor gold
         "description": "European leader, strong in luxury via Raffles/Fairmont",
         "hq": "Issy-les-Moulineaux, France",
