@@ -44,7 +44,7 @@ TICKERS = {name: info["ticker"] for name, info in COMPANIES.items()}
 COLORS = {name: info["color"] for name, info in COMPANIES.items()}
 
 # Quarters covered (trailing 4)
-QUARTERS = ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025"]
+QUARTERS = ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025", "Q1 2026"]
 
 # Currency formatting
 def fmt_currency(val, decimals=0):

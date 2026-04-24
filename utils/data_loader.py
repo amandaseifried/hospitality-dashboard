@@ -3,6 +3,7 @@
 import pandas as pd
 import os
 import streamlit as st
+from config import QUARTERS
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
@@ -89,11 +90,29 @@ def load_digital_news() -> pd.DataFrame:
 
 
 def get_latest_quarter(df: pd.DataFrame) -> pd.DataFrame:
-    quarters_order = ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025"]
-    available = [q for q in quarters_order if q in df["Quarter"].values]
+    available = [q for q in QUARTERS if q in df["Quarter"].values]
     if not available:
         return df
     return df[df["Quarter"] == available[-1]]
+
+
+def get_latest_per_company(df: pd.DataFrame) -> pd.DataFrame:
+    """Return each company's most recent quarter that has actual data.
+
+    Used during earnings season when not all companies have reported yet —
+    shows each company at its own latest reported quarter rather than forcing
+    all companies to Q1 2026 when only some have filed.
+    """
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    result = []
+    for company in df["Company"].unique():
+        co = df[df["Company"] == company]
+        for q in reversed(QUARTERS):
+            qrow = co[co["Quarter"] == q]
+            if not qrow.empty and qrow[numeric_cols].notna().any(axis=None):
+                result.append(qrow)
+                break
+    return pd.concat(result) if result else df
 
 
 def get_logo_path(company: str) -> str:
