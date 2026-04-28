@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from config import COMPANIES, COMPANY_NAMES, TICKERS, COLORS, QUARTERS
+from constants import COMPANY_ROOMS
 from scrapers.market_data import (
     get_stock_data, get_company_info,
     calculate_ytd_returns, calculate_period_returns
@@ -72,6 +73,9 @@ SOURCES = {
     ],
 }
 
+DASHBOARD_LAST_UPDATED = "April 28, 2026"
+
+
 def render_sources(key):
     """Render a sources section at the bottom of a tab."""
     sources = SOURCES.get(key, [])
@@ -90,6 +94,11 @@ def render_sources(key):
         f'</div>',
         unsafe_allow_html=True,
     )
+
+
+def _plot(fig):
+    """Render a Plotly figure with the modebar suppressed."""
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ── News table helpers — global scope so Tab 3 and Tab 5 both have access ─────
@@ -355,6 +364,7 @@ st.markdown("""
 
 # ── Header ───────────────────────────────────────────────────────────────────
 st.markdown("# Hospitality Competitive Intelligence")
+st.caption(f"Last updated: {DASHBOARD_LAST_UPDATED}")
 
 # ── Load Data ────────────────────────────────────────────────────────────────
 hotel_kpis = load_hotel_kpis()
@@ -379,6 +389,14 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # TAB 1: COMPANY OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab1:
+    _COMPANY_DESC = {
+        "Marriott": "World's largest hotel company by rooms, operating 30+ brands across luxury, premium, and select-service tiers globally.",
+        "Hilton":   "Global hospitality leader with 24 brands from Waldorf Astoria to Hampton Inn, built on an asset-light, fee-based model.",
+        "IHG":      "UK-headquartered operator of 19 brands including InterContinental and Holiday Inn, with strong Americas and luxury presence.",
+        "Hyatt":    "Premium operator focused on luxury and upper-upscale segments, with Park Hyatt, Andaz, Alila, and World of Hyatt loyalty.",
+        "Accor":    "Europe's largest hotel group with 45+ brands from ibis to Raffles and Fairmont, spanning economy to ultra-luxury.",
+    }
+
     # Company logos — uniform height
     cols = st.columns(5)
     for i, company in enumerate(COMPANY_NAMES):
@@ -396,6 +414,12 @@ with tab1:
             st.markdown(
                 f'<p style="text-align:center; font-size:0.78rem; color:#888; margin-top:0px;">'
                 f'{info["hq"]}</p>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<p style="text-align:center; font-size:0.74rem; color:#666; '
+                f'margin-top:4px; line-height:1.45;">'
+                f'<em>{_COMPANY_DESC[company]}</em></p>',
                 unsafe_allow_html=True,
             )
 
@@ -459,7 +483,7 @@ with tab1:
                 font=dict(color="#111111"),
             ),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        _plot(fig)
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -480,9 +504,6 @@ with tab1:
                     ticker = TICKERS.get(company, "")
                     currency = "€" if ticker.endswith(".PA") else "$"
                     st.metric(company, f"{currency}{price:,.2f}" if pd.notna(price) else "N/A")
-        if "_fetched_at" in company_info.columns:
-            _ft = company_info.iloc[0]["_fetched_at"]
-            st.caption(f"Last updated: {_ft.strftime('%b %d, %Y %I:%M %p')}")
 
         # Market cap row with title
         st.markdown("### Market Capitalization")
@@ -511,7 +532,7 @@ with tab1:
             stock_data,
             title=f"{selected_period} Relative Performance (Indexed to 100)",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        _plot(fig)
 
         # Returns matching the selected period
         period_returns = calculate_period_returns(stock_data)
@@ -616,6 +637,11 @@ with tab2:
         chart_prefix = "Annual"
 
     # ── Four combo charts (growth lines on annual only) ───────────────────────
+    _q1_cap = (
+        f"*Q1 2026 reflects only companies that have reported as of "
+        f"{pd.Timestamp.today().strftime('%B %d, %Y')}; "
+        f"remaining companies report in May 2026.*"
+    )
     col1, col2 = st.columns(2)
 
     with col1:
@@ -626,7 +652,9 @@ with tab2:
             growth_label="YoY Growth (%)", height=340,
             show_growth=not is_quarterly,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        _plot(fig)
+        if is_quarterly:
+            st.caption(_q1_cap)
 
     with col2:
         st.markdown(f"## {chart_prefix} Adjusted EPS")
@@ -636,7 +664,23 @@ with tab2:
             growth_label="YoY Growth (%)", height=340,
             show_growth=not is_quarterly,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        if is_quarterly and "Q3 2025" in period_order:
+            fig.add_annotation(
+                x="Q3 2025", y=-0.30,
+                text="Hyatt: investment impairments<br>& Playa acquisition costs",
+                showarrow=True,
+                arrowhead=2, arrowsize=0.8, arrowwidth=1.5,
+                arrowcolor="#888",
+                ax=55, ay=-38,
+                font=dict(size=10, color="#555",
+                          family="Inter, Helvetica, Arial, sans-serif"),
+                bgcolor="rgba(255,255,255,0.88)",
+                bordercolor="#ccc", borderwidth=1, borderpad=4,
+                align="left",
+            )
+        _plot(fig)
+        if is_quarterly:
+            st.caption(_q1_cap)
 
     col1, col2 = st.columns(2)
 
@@ -648,7 +692,9 @@ with tab2:
             growth_label="YoY Growth (%)", height=340,
             show_growth=not is_quarterly,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        _plot(fig)
+        if is_quarterly:
+            st.caption(_q1_cap)
 
     with col2:
         st.markdown(f"## {chart_prefix} Adj. EBITDA")
@@ -658,7 +704,9 @@ with tab2:
             growth_label="YoY Growth (%)", height=340,
             show_growth=not is_quarterly,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        _plot(fig)
+        if is_quarterly:
+            st.caption(_q1_cap)
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -863,51 +911,59 @@ with tab4:
     _AXIS = dict(gridcolor="#ebebeb", showline=True, linecolor="#ccc",
                  tickfont=dict(color="#111", size=12))
 
-    # ── Full-width RevPAR combo chart (rolling 4Q avg vs prior 4Q avg) ───────
-    _revpar_label = f"{_Q25[0]}–{_Q25[-1]}"
-    st.markdown(f"## RevPAR — Rolling 4 Quarters ({_revpar_label})")
+    # ── Full-width RevPAR grouped bar chart (quarterly actuals) ─────────────
+    st.markdown("## Quarterly RevPAR")
 
-    _fy25 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)]
-    _fy24 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q24)]
-    _rp25 = _fy25.groupby("Company")["RevPAR"].mean()
-    _rp24 = _fy24.groupby("Company")["RevPAR"].mean()
-    _rp_yoy = ((_rp25 - _rp24) / _rp24 * 100).round(1)
-    _cos = [c for c in COMPANY_NAMES if c in _rp25.index]
+    _revpar_df = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)].copy()
+    _q1_reported = set(
+        _revpar_df[(_revpar_df["Quarter"] == "Q1 2026") & _revpar_df["RevPAR"].notna()]["Company"]
+    )
+    _missing_q1 = [c for c in COMPANY_NAMES if c not in _q1_reported]
 
     fig_revpar = go.Figure()
-    fig_revpar.add_trace(go.Bar(
-        x=_cos, y=[float(_rp25[c]) for c in _cos],
-        name=f"Avg RevPAR ({_revpar_label})",
-        marker_color=[COLORS.get(c, "#888") for c in _cos],
-        opacity=0.85, yaxis="y",
-    ))
-    _g = [float(_rp_yoy[c]) if c in _rp_yoy.index else None for c in _cos]
-    fig_revpar.add_trace(go.Scatter(
-        x=_cos, y=_g, name="YoY Growth %",
-        mode="lines+markers+text",
-        line=dict(color="#555", width=2.5, dash="dot"),
-        marker=dict(size=11, color=[COLORS.get(c, "#888") for c in _cos],
-                    line=dict(color="#333", width=1.5)),
-        text=[f"{v:+.1f}%" if (v is not None and v == v) else "" for v in _g],
-        textposition="top center", textfont=dict(size=11, color="#333"),
-        yaxis="y2",
-    ))
+    for _co in COMPANY_NAMES:
+        _cd = _revpar_df[_revpar_df["Company"] == _co].copy()
+        _cd = _cd[_cd["RevPAR"].notna()]
+        if _cd.empty:
+            continue
+        _cd["_ord"] = _cd["Quarter"].map({q: i for i, q in enumerate(_Q25)})
+        _cd = _cd.sort_values("_ord")
+        fig_revpar.add_trace(go.Bar(
+            x=_cd["Quarter"],
+            y=_cd["RevPAR"],
+            name=_co,
+            marker_color=COLORS.get(_co, "#888"),
+            opacity=0.82,
+        ))
+
     fig_revpar.update_layout(
-        **_OP_THEME, height=440, barmode="group",
+        barmode="group",
+        template="none",
+        font=dict(family="Inter, Helvetica, Arial, sans-serif", size=13, color="#111"),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-                    font=dict(size=12, color="#111")),
-        xaxis={**_AXIS, "tickfont": dict(color="#111", size=13)},
-        yaxis=dict(**_AXIS, title="Avg RevPAR ($)",
-                   title_font=dict(color="#111", size=13,
-                                   family="Inter, Helvetica, Arial, sans-serif")),
-        yaxis2=dict(title="YoY Growth (%)", overlaying="y", side="right",
-                    showgrid=False, showline=True, linecolor="#ddd",
-                    tickfont=dict(color="#888", size=11), ticksuffix="%",
-                    title_font=dict(color="#888", size=12,
-                                    family="Inter, Helvetica, Arial, sans-serif"),
-                    zeroline=True, zerolinecolor="#ddd", zerolinewidth=1),
+                    font=dict(size=11, color="#111")),
+        margin=dict(l=60, r=20, t=30, b=40),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        height=340,
+        xaxis=dict(
+            gridcolor="#ebebeb", showline=True, linecolor="#ccc",
+            tickfont=dict(color="#111", size=12),
+            categoryorder="array", categoryarray=_Q25,
+        ),
+        yaxis=dict(
+            title="RevPAR ($)",
+            gridcolor="#ebebeb", showline=True, linecolor="#ccc",
+            tickfont=dict(color="#111", size=12),
+            title_font=dict(color="#111", size=13,
+                            family="Inter, Helvetica, Arial, sans-serif"),
+        ),
     )
-    st.plotly_chart(fig_revpar, use_container_width=True)
+    _plot(fig_revpar)
+
+    if _missing_q1:
+        _today_str = pd.Timestamp.today().strftime("%B %d, %Y")
+        st.caption(f"*Q1 2026 reflects only companies that have reported as of {_today_str}.*")
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -918,12 +974,25 @@ with tab4:
         fig = go.Figure()
         for _, r in df_sorted.iterrows():
             co = str(r["Company"])
-            fig.add_trace(go.Bar(
-                x=[float(r[x_col])], y=[co],
-                name=co, orientation="h",
-                marker_color=COLORS.get(co, "#888"), opacity=0.85,
-                showlegend=False,
-            ))
+            val = r[x_col]
+            if pd.notna(val):
+                fig.add_trace(go.Bar(
+                    x=[float(val)], y=[co],
+                    name=co, orientation="h",
+                    marker_color=COLORS.get(co, "#888"), opacity=0.85,
+                    showlegend=False,
+                ))
+            else:
+                fig.add_trace(go.Bar(
+                    x=[0], y=[co],
+                    name=co, orientation="h",
+                    marker_color="#cccccc", opacity=0.5,
+                    showlegend=False,
+                    text=["N/A"],
+                    textposition="outside",
+                    cliponaxis=False,
+                    textfont=dict(color="#aaa", size=11),
+                ))
         fig.update_layout(
             **_OP_THEME, height=height, showlegend=False,
             xaxis=dict(**_AXIS), yaxis=dict(**_AXIS, showgrid=False),
@@ -933,18 +1002,12 @@ with tab4:
     with col1:
         st.markdown("## ADR — Q4 2025")
         if not _q4.empty:
-            st.plotly_chart(
-                _horiz_bar(_q4.sort_values("ADR"), "ADR"),
-                use_container_width=True,
-            )
+            _plot(_horiz_bar(_q4.sort_values("ADR"), "ADR"))
 
     with col2:
         st.markdown("## Occupancy — Q4 2025")
         if not _q4.empty:
-            st.plotly_chart(
-                _horiz_bar(_q4.sort_values("Occupancy %"), "Occupancy %"),
-                use_container_width=True,
-            )
+            _plot(_horiz_bar(_q4.sort_values("Occupancy %"), "Occupancy %"))
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -975,45 +1038,94 @@ with tab4:
             yaxis=dict(**_AXIS, title="ADR ($)",
                        title_font=dict(color="#111", size=13)),
         )
-        st.plotly_chart(fig_sc, use_container_width=True)
+        _plot(fig_sc)
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
-    # ── Pipeline & Net Unit Growth ────────────────────────────────────────────
+    # ── Pipeline pair ─────────────────────────────────────────────────────────
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("## Development Pipeline — Q4 2025")
         if not _q4.empty:
-            st.plotly_chart(
-                _horiz_bar(_q4.sort_values("Pipeline Rooms"), "Pipeline Rooms"),
-                use_container_width=True,
-            )
+            _plot(_horiz_bar(_q4.sort_values("Pipeline Rooms"), "Pipeline Rooms"))
 
     with col2:
-        st.markdown("## Net Unit Growth — FY 2025")
-        _kpis_q25 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)]
-        fig_nug = go.Figure()
-        _x_ord = {q: i for i, q in enumerate(_Q25)}
-        for co in COMPANY_NAMES:
-            _cd = _kpis_q25[_kpis_q25["Company"] == co].copy()
-            _cd["_o"] = _cd["Quarter"].map(_x_ord)
-            _cd = _cd.sort_values("_o")
-            if _cd.empty:
-                continue
-            fig_nug.add_trace(go.Scatter(
-                x=_cd["Quarter"].tolist(), y=_cd["Net Unit Growth %"].tolist(),
-                name=co, mode="lines+markers",
-                line=dict(color=COLORS.get(co, "#888"), width=2.5),
-                marker=dict(size=7, color=COLORS.get(co, "#888")),
-            ))
-        fig_nug.update_layout(
-            **_OP_THEME, height=280,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                        xanchor="right", x=1, font=dict(size=11)),
-            xaxis=dict(**_AXIS), yaxis=dict(**_AXIS, title="Net Unit Growth (%)"),
-        )
-        st.plotly_chart(fig_nug, use_container_width=True)
+        st.markdown("## Pipeline as % of Existing Rooms — Q4 2025")
+        if not _q4.empty:
+            _pct_rows = []
+            for _, _r in _q4.iterrows():
+                _co = str(_r["Company"])
+                _pipe = _r["Pipeline Rooms"]
+                _base = COMPANY_ROOMS.get(_co)
+                _pct = _pipe / _base * 100 if (pd.notna(_pipe) and _base) else float("nan")
+                _pct_rows.append({"Company": _co, "Pct": _pct})
+            _pct_df = pd.DataFrame(_pct_rows).sort_values("Pct", na_position="last")
+
+            fig_pipe_pct = go.Figure()
+            for _, _r in _pct_df.iterrows():
+                _co = str(_r["Company"])
+                _v = _r["Pct"]
+                if pd.notna(_v):
+                    fig_pipe_pct.add_trace(go.Bar(
+                        x=[_v], y=[_co],
+                        name=_co, orientation="h",
+                        marker_color=COLORS.get(_co, "#888"), opacity=0.85,
+                        showlegend=False,
+                        text=[f"{_v:.1f}%"],
+                        textposition="outside",
+                        cliponaxis=False,
+                        textfont=dict(size=11, color="#555",
+                                      family="Inter, Helvetica, Arial, sans-serif"),
+                    ))
+                else:
+                    fig_pipe_pct.add_trace(go.Bar(
+                        x=[0], y=[_co],
+                        name=_co, orientation="h",
+                        marker_color="#cccccc", opacity=0.5,
+                        showlegend=False,
+                        text=["N/A"],
+                        textposition="outside",
+                        cliponaxis=False,
+                        textfont=dict(color="#aaa", size=11),
+                    ))
+            fig_pipe_pct.update_layout(
+                **_OP_THEME, height=280, showlegend=False,
+                xaxis=dict(**_AXIS, ticksuffix="%"),
+                yaxis=dict(**_AXIS, showgrid=False),
+            )
+            _plot(fig_pipe_pct)
+            st.caption(
+                "*Pipeline % normalizes for portfolio size — a more directly "
+                "comparable growth signal than absolute pipeline rooms.*"
+            )
+
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
+    # ── Net Unit Growth ───────────────────────────────────────────────────────
+    st.markdown("## Net Unit Growth — FY 2025")
+    _kpis_q25 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)]
+    fig_nug = go.Figure()
+    _x_ord = {q: i for i, q in enumerate(_Q25)}
+    for co in COMPANY_NAMES:
+        _cd = _kpis_q25[_kpis_q25["Company"] == co].copy()
+        _cd["_o"] = _cd["Quarter"].map(_x_ord)
+        _cd = _cd.sort_values("_o")
+        if _cd.empty:
+            continue
+        fig_nug.add_trace(go.Scatter(
+            x=_cd["Quarter"].tolist(), y=_cd["Net Unit Growth %"].tolist(),
+            name=co, mode="lines+markers",
+            line=dict(color=COLORS.get(co, "#888"), width=2.5),
+            marker=dict(size=7, color=COLORS.get(co, "#888")),
+        ))
+    fig_nug.update_layout(
+        **_OP_THEME, height=280,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                    xanchor="right", x=1, font=dict(size=11)),
+        xaxis=dict(**_AXIS), yaxis=dict(**_AXIS, title="Net Unit Growth (%)"),
+    )
+    _plot(fig_nug)
 
     render_sources("operational_overview")
 
@@ -1040,7 +1152,7 @@ with tab5:
         if _lh.empty:
             continue
         fig_loyalty.add_trace(go.Scatter(
-            x=_lh["Year"].astype(str).tolist(),
+            x=_lh["Year"].tolist(),
             y=_lh["Loyalty Members (M)"].tolist(),
             name=_co, mode="lines+markers",
             line=dict(color=COLORS.get(_co, "#888"), width=2.5),
@@ -1050,12 +1162,13 @@ with tab5:
         **_DIG_THEME, height=360,
         legend=dict(orientation="h", yanchor="bottom", y=1.02,
                     xanchor="right", x=1, font=dict(size=12, color="#111")),
-        xaxis=dict(**_DIG_AXIS),
+        xaxis=dict(**_DIG_AXIS, tickmode="array", tickvals=[2022, 2023, 2024, 2025],
+                   tickformat="d"),
         yaxis=dict(**_DIG_AXIS, title="Members (Millions)",
                    title_font=dict(color="#111", size=13,
                                    family="Inter, Helvetica, Arial, sans-serif")),
     )
-    st.plotly_chart(fig_loyalty, use_container_width=True)
+    _plot(fig_loyalty)
 
     # ── FY 2025 Loyalty metric boxes ──────────────────────────────────────────
     st.markdown("### FY 2025 Loyalty Members")
