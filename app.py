@@ -328,6 +328,9 @@ st.markdown("""
     .brand-name { font-weight: 600; font-size: 0.9rem; color: #1a1a1a; }
     .brand-detail { font-size: 0.78rem; color: #888; margin-top: 2px; }
 
+    /* Caption text */
+    .stCaption p { color: #888 !important; }
+
     /* Hide Streamlit extras */
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -1038,6 +1041,53 @@ with tab4:
                 _rows.append({k: _r[k] for k in _keep if k in _r.index})
         return pd.DataFrame(_rows) if _rows else pd.DataFrame(columns=_keep)
 
+    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix=""):
+        """Compact QoQ table for Operational Overview charts."""
+        if len(quarters) < 2:
+            return ""
+        curr_q, prev_q = quarters[-1], quarters[-2]
+        _fs = "font-family:Inter,Helvetica,Arial,sans-serif; font-size:0.80rem;"
+        _th = ("font-size:0.68rem; font-weight:600; color:#aaa; text-transform:uppercase; "
+               "letter-spacing:0.05em; padding:4px 8px; border-bottom:1px solid #e8e8e8; "
+               "white-space:nowrap;")
+        _td  = "padding:4px 8px; border-bottom:1px solid #f5f5f5;"
+        _tdr = _td + " text-align:right; font-variant-numeric:tabular-nums;"
+        rows = ""
+        for co in COMPANY_NAMES:
+            cdf = df[df["Company"] == co]
+            cr  = cdf[cdf["Quarter"] == curr_q]
+            pr  = cdf[cdf["Quarter"] == prev_q]
+            cv  = (float(cr.iloc[0][metric])
+                   if not cr.empty and metric in cr.columns and pd.notna(cr.iloc[0][metric])
+                   else None)
+            pv  = (float(pr.iloc[0][metric])
+                   if not pr.empty and metric in pr.columns and pd.notna(pr.iloc[0][metric])
+                   else None)
+            col = COLORS.get(co, "#888")
+            if cv is None:
+                val_td = f'<td style="{_tdr} color:#ccc;">—</td>'
+                chg_td = f'<td style="{_tdr} color:#bbb; font-size:0.75rem; font-style:italic;">not yet reported</td>'
+            else:
+                val_td = f'<td style="{_tdr}">{fmt.format(cv)}{suffix}</td>'
+                if pv is not None and pv != 0:
+                    g = (cv - pv) / abs(pv) * 100
+                    sign = "+" if g >= 0 else ""
+                    gc = "#2a7a50" if g >= 0 else "#b03030"
+                    chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{g:.1f}%</td>'
+                else:
+                    chg_td = f'<td style="{_tdr} color:#ccc;">—</td>'
+            rows += (f'<tr><td style="{_td} font-weight:600; color:{col};">{co}</td>'
+                     f'{val_td}{chg_td}</tr>')
+        return (
+            f'<div style="margin:2px 0 12px 0;">'
+            f'<table style="width:100%; border-collapse:collapse; {_fs}">'
+            f'<thead><tr>'
+            f'<th style="{_th} text-align:left;">Brand</th>'
+            f'<th style="{_th} text-align:right;">{curr_q}</th>'
+            f'<th style="{_th} text-align:right;">vs {prev_q}</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table></div>'
+        )
+
     _OP_THEME = dict(
         template="none",
         font=dict(family="Inter, Helvetica, Arial, sans-serif", size=13, color="#111"),
@@ -1102,6 +1152,10 @@ with tab4:
             f"*Q1 2026 reflects only companies that have reported as of "
             f"{DASHBOARD_LAST_UPDATED}; remaining companies report in May 2026.*"
         )
+    st.markdown(
+        _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}"),
+        unsafe_allow_html=True,
+    )
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -1117,7 +1171,7 @@ with tab4:
             val = r[x_col]
             qtr = str(r["Quarter"]) if _has_qtr and pd.notna(r.get("Quarter")) else ""
             if pd.notna(val):
-                _val_fmt = hfmt % float(val) if hfmt else f"{float(val):,.2f}"
+                _val_fmt = hfmt.format(float(val)) if hfmt else f"{float(val):,.2f}"
                 _htmpl = (
                     f"<b>{co}</b><br>{_val_fmt}"
                     + (f"<br><span style='color:#888;font-size:11px;'>{qtr}</span>" if qtr else "")
@@ -1153,12 +1207,12 @@ with tab4:
     with col1:
         st.markdown("## ADR")
         if not _adr_df.empty:
-            _plot(_horiz_bar(_adr_df.sort_values("ADR"), "ADR", hfmt="$%.2f"))
+            _plot(_horiz_bar(_adr_df.sort_values("ADR"), "ADR", hfmt="${:.2f}"))
 
     with col2:
         st.markdown("## Occupancy Rate")
         if not _occ_df.empty:
-            _plot(_horiz_bar(_occ_df.sort_values("Occupancy %"), "Occupancy %", hfmt="%.1f%%"))
+            _plot(_horiz_bar(_occ_df.sort_values("Occupancy %"), "Occupancy %", hfmt="{:.1f}%"))
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -1229,7 +1283,7 @@ with tab4:
         if not _pipe_df.empty:
             _plot(_horiz_bar(
                 _pipe_df.sort_values("Pipeline Rooms"),
-                "Pipeline Rooms", hfmt="%,.0f rooms",
+                "Pipeline Rooms", hfmt="{:,.0f} rooms",
             ))
 
     with col2:
