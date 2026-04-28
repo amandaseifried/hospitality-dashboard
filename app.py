@@ -329,7 +329,9 @@ st.markdown("""
     .brand-detail { font-size: 0.78rem; color: #888; margin-top: 2px; }
 
     /* Caption text */
-    .stCaption p { color: #888 !important; }
+    .stCaption p,
+    [data-testid="stCaptionContainer"] p,
+    [data-testid="stCaptionContainer"] { color: #888 !important; }
 
     /* Hide Streamlit extras */
     #MainMenu { visibility: hidden; }
@@ -367,7 +369,10 @@ st.markdown("""
 
 # ── Header ───────────────────────────────────────────────────────────────────
 st.markdown("# Hospitality Competitive Intelligence")
-st.caption(f"Last updated: {DASHBOARD_LAST_UPDATED}")
+st.markdown(
+    f'<p style="font-size:0.82rem; color:#888; margin-top:-6px; margin-bottom:0;">Last updated: {DASHBOARD_LAST_UPDATED}</p>',
+    unsafe_allow_html=True,
+)
 
 # ── Load Data ────────────────────────────────────────────────────────────────
 hotel_kpis = load_hotel_kpis()
@@ -646,12 +651,13 @@ with tab2:
         f"remaining companies report in May 2026.*"
     )
 
-    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False):
-        """Compact QoQ table: latest period value + change vs prior period per brand."""
-        if len(period_order) < 2:
+    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None):
+        """Compact YoY table: latest period value + change vs same quarter prior year per brand."""
+        if len(period_order) < 1:
             return ""
         curr_q = period_order[-1]
-        prev_q = period_order[-2]
+        _p = curr_q.split()
+        yoy_q = f"{_p[0]} {int(_p[1]) - 1}"
         _fs = "font-family:Inter,Helvetica,Arial,sans-serif; font-size:0.80rem;"
         _th = ("font-size:0.68rem; font-weight:600; color:#aaa; text-transform:uppercase; "
                "letter-spacing:0.05em; padding:4px 8px; border-bottom:1px solid #e8e8e8; "
@@ -662,7 +668,9 @@ with tab2:
         for co in COMPANY_NAMES:
             cdf = df[df["Company"] == co]
             cr  = cdf[cdf["Quarter"] == curr_q]
-            pr  = cdf[cdf["Quarter"] == prev_q]
+            _yoy_src = df_yoy if df_yoy is not None else df
+            ydf = _yoy_src[_yoy_src["Company"] == co]
+            pr  = ydf[ydf["Quarter"] == yoy_q]
             cv  = (float(cr.iloc[0][metric])
                    if not cr.empty and metric in cr.columns and pd.notna(cr.iloc[0][metric])
                    else None)
@@ -696,7 +704,7 @@ with tab2:
             f'<thead><tr>'
             f'<th style="{_th} text-align:left;">Brand</th>'
             f'<th style="{_th} text-align:right;">{curr_q}</th>'
-            f'<th style="{_th} text-align:right;">vs {prev_q}</th>'
+            f'<th style="{_th} text-align:right;">vs {yoy_q}</th>'
             f'</tr></thead><tbody>{rows}</tbody></table></div>'
         )
 
@@ -713,7 +721,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M"),
+            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev),
                         unsafe_allow_html=True)
 
     with col2:
@@ -727,7 +735,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M"),
+            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev),
                         unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
@@ -743,7 +751,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M"),
+            st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev),
                         unsafe_allow_html=True)
 
     with col2:
@@ -771,7 +779,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}"),
+            st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}", df_yoy=df_prev),
                         unsafe_allow_html=True)
 
     # ── EBITDA Margin (full-width, 5th chart) ─────────────────────────────────
@@ -789,9 +797,13 @@ with tab2:
     fig.update_layout(yaxis=dict(ticksuffix="%", tickformat=".1f"))
     _plot(fig)
     if is_quarterly:
+        _margin_prev_df = df_prev.copy()
+        _margin_prev_df["EBITDA Margin (%)"] = (
+            _margin_prev_df["Adj. EBITDA ($M)"] / _margin_prev_df["Revenue ($M)"] * 100
+        )
         st.caption(_q1_cap)
         st.markdown(_qoq_html(_margin_df, "EBITDA Margin (%)", fmt="{:.1f}", suffix="%",
-                               as_pp=True),
+                               as_pp=True, df_yoy=_margin_prev_df),
                     unsafe_allow_html=True)
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
@@ -1041,11 +1053,13 @@ with tab4:
                 _rows.append({k: _r[k] for k in _keep if k in _r.index})
         return pd.DataFrame(_rows) if _rows else pd.DataFrame(columns=_keep)
 
-    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix=""):
-        """Compact QoQ table for Operational Overview charts."""
-        if len(quarters) < 2:
+    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix="", df_yoy=None):
+        """Compact YoY table for Operational Overview charts."""
+        if len(quarters) < 1:
             return ""
-        curr_q, prev_q = quarters[-1], quarters[-2]
+        curr_q = quarters[-1]
+        _p = curr_q.split()
+        yoy_q = f"{_p[0]} {int(_p[1]) - 1}"
         _fs = "font-family:Inter,Helvetica,Arial,sans-serif; font-size:0.80rem;"
         _th = ("font-size:0.68rem; font-weight:600; color:#aaa; text-transform:uppercase; "
                "letter-spacing:0.05em; padding:4px 8px; border-bottom:1px solid #e8e8e8; "
@@ -1056,7 +1070,9 @@ with tab4:
         for co in COMPANY_NAMES:
             cdf = df[df["Company"] == co]
             cr  = cdf[cdf["Quarter"] == curr_q]
-            pr  = cdf[cdf["Quarter"] == prev_q]
+            _yoy_src = df_yoy if df_yoy is not None else df
+            ydf = _yoy_src[_yoy_src["Company"] == co]
+            pr  = ydf[ydf["Quarter"] == yoy_q]
             cv  = (float(cr.iloc[0][metric])
                    if not cr.empty and metric in cr.columns and pd.notna(cr.iloc[0][metric])
                    else None)
@@ -1084,7 +1100,7 @@ with tab4:
             f'<thead><tr>'
             f'<th style="{_th} text-align:left;">Brand</th>'
             f'<th style="{_th} text-align:right;">{curr_q}</th>'
-            f'<th style="{_th} text-align:right;">vs {prev_q}</th>'
+            f'<th style="{_th} text-align:right;">vs {yoy_q}</th>'
             f'</tr></thead><tbody>{rows}</tbody></table></div>'
         )
 
@@ -1153,7 +1169,7 @@ with tab4:
             f"{DASHBOARD_LAST_UPDATED}; remaining companies report in May 2026.*"
         )
     st.markdown(
-        _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}"),
+        _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}", df_yoy=hotel_kpis),
         unsafe_allow_html=True,
     )
 
