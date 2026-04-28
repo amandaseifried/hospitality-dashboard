@@ -639,9 +639,64 @@ with tab2:
     # ── Four combo charts (growth lines on annual only) ───────────────────────
     _q1_cap = (
         f"*Q1 2026 reflects only companies that have reported as of "
-        f"{pd.Timestamp.today().strftime('%B %d, %Y')}; "
+        f"{DASHBOARD_LAST_UPDATED}; "
         f"remaining companies report in May 2026.*"
     )
+
+    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False):
+        """Compact QoQ table: latest period value + change vs prior period per brand."""
+        if len(period_order) < 2:
+            return ""
+        curr_q = period_order[-1]
+        prev_q = period_order[-2]
+        _fs = "font-family:Inter,Helvetica,Arial,sans-serif; font-size:0.80rem;"
+        _th = ("font-size:0.68rem; font-weight:600; color:#aaa; text-transform:uppercase; "
+               "letter-spacing:0.05em; padding:4px 8px; border-bottom:1px solid #e8e8e8; "
+               "white-space:nowrap;")
+        _td  = "padding:4px 8px; border-bottom:1px solid #f5f5f5;"
+        _tdr = _td + " text-align:right; font-variant-numeric:tabular-nums;"
+        rows = ""
+        for co in COMPANY_NAMES:
+            cdf = df[df["Company"] == co]
+            cr  = cdf[cdf["Quarter"] == curr_q]
+            pr  = cdf[cdf["Quarter"] == prev_q]
+            cv  = (float(cr.iloc[0][metric])
+                   if not cr.empty and metric in cr.columns and pd.notna(cr.iloc[0][metric])
+                   else None)
+            pv  = (float(pr.iloc[0][metric])
+                   if not pr.empty and metric in pr.columns and pd.notna(pr.iloc[0][metric])
+                   else None)
+            col = COLORS.get(co, "#888")
+            if cv is None:
+                val_td = f'<td style="{_tdr} color:#ccc;">—</td>'
+                chg_td = f'<td style="{_tdr} color:#bbb; font-size:0.75rem; font-style:italic;">not yet reported</td>'
+            else:
+                val_td = f'<td style="{_tdr}">{fmt.format(cv)}{suffix}</td>'
+                if pv is not None and pv != 0:
+                    if as_pp:
+                        d = cv - pv
+                        sign = "+" if d >= 0 else ""
+                        gc = "#2a7a50" if d >= 0 else "#b03030"
+                        chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{d:.1f} pp</td>'
+                    else:
+                        g = (cv - pv) / abs(pv) * 100
+                        sign = "+" if g >= 0 else ""
+                        gc = "#2a7a50" if g >= 0 else "#b03030"
+                        chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{g:.1f}%</td>'
+                else:
+                    chg_td = f'<td style="{_tdr} color:#ccc;">—</td>'
+            rows += (f'<tr><td style="{_td} font-weight:600; color:{col};">{co}</td>'
+                     f'{val_td}{chg_td}</tr>')
+        return (
+            f'<div style="margin:2px 0 12px 0;">'
+            f'<table style="width:100%; border-collapse:collapse; {_fs}">'
+            f'<thead><tr>'
+            f'<th style="{_th} text-align:left;">Brand</th>'
+            f'<th style="{_th} text-align:right;">{curr_q}</th>'
+            f'<th style="{_th} text-align:right;">vs {prev_q}</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table></div>'
+        )
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -655,6 +710,38 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
+            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M"),
+                        unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"## {chart_prefix} Fee Revenue")
+        fig = financial_combo_chart(
+            df_curr, "Fee Revenue ($M)", "Fee Revenue ($M)",
+            period_col, period_order, df_prev,
+            growth_label="YoY Growth (%)", height=340,
+            show_growth=not is_quarterly,
+        )
+        _plot(fig)
+        if is_quarterly:
+            st.caption(_q1_cap)
+            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M"),
+                        unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"## {chart_prefix} Adj. EBITDA")
+        fig = financial_combo_chart(
+            df_curr, "Adj. EBITDA ($M)", "Adj. EBITDA ($M)",
+            period_col, period_order, df_prev,
+            growth_label="YoY Growth (%)", height=340,
+            show_growth=not is_quarterly,
+        )
+        _plot(fig)
+        if is_quarterly:
+            st.caption(_q1_cap)
+            st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M"),
+                        unsafe_allow_html=True)
 
     with col2:
         st.markdown(f"## {chart_prefix} Adjusted EPS")
@@ -681,32 +768,28 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
+            st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}"),
+                        unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown(f"## {chart_prefix} Fee Revenue")
-        fig = financial_combo_chart(
-            df_curr, "Fee Revenue ($M)", "Fee Revenue ($M)",
-            period_col, period_order, df_prev,
-            growth_label="YoY Growth (%)", height=340,
-            show_growth=not is_quarterly,
-        )
-        _plot(fig)
-        if is_quarterly:
-            st.caption(_q1_cap)
-
-    with col2:
-        st.markdown(f"## {chart_prefix} Adj. EBITDA")
-        fig = financial_combo_chart(
-            df_curr, "Adj. EBITDA ($M)", "Adj. EBITDA ($M)",
-            period_col, period_order, df_prev,
-            growth_label="YoY Growth (%)", height=340,
-            show_growth=not is_quarterly,
-        )
-        _plot(fig)
-        if is_quarterly:
-            st.caption(_q1_cap)
+    # ── EBITDA Margin (full-width, 5th chart) ─────────────────────────────────
+    st.markdown(f"## {chart_prefix} EBITDA Margin")
+    _margin_df = df_curr.copy()
+    _margin_df["EBITDA Margin (%)"] = (
+        _margin_df["Adj. EBITDA ($M)"] / _margin_df["Revenue ($M)"] * 100
+    )
+    fig = financial_combo_chart(
+        _margin_df, "EBITDA Margin (%)", "EBITDA Margin (%)",
+        period_col, period_order, None,
+        growth_label="YoY Growth (%)", height=340,
+        show_growth=not is_quarterly,
+    )
+    fig.update_layout(yaxis=dict(ticksuffix="%", tickformat=".1f"))
+    _plot(fig)
+    if is_quarterly:
+        st.caption(_q1_cap)
+        st.markdown(_qoq_html(_margin_df, "EBITDA Margin (%)", fmt="{:.1f}", suffix="%",
+                               as_pp=True),
+                    unsafe_allow_html=True)
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -745,12 +828,35 @@ with tab2:
         sign  = "+" if g >= 0 else ""
         return f'<span style="color:{color}; font-weight:600;">{sign}{g:.1f}%</span>'
 
+    def _fmt_yoy_pp(curr_margin, prior_df, company):
+        """Format YoY change in percentage points for EBITDA Margin."""
+        if curr_margin is None or not pd.notna(curr_margin):
+            return '<span style="color:#bbb;">—</span>'
+        row = prior_df[prior_df["Company"] == company]
+        if row.empty:
+            return '<span style="color:#bbb;">—</span>'
+        prev_rev = row.iloc[0]["Revenue ($M)"]
+        prev_ebitda = row.iloc[0]["Adj. EBITDA ($M)"]
+        if not pd.notna(prev_rev) or not pd.notna(prev_ebitda) or prev_rev == 0:
+            return '<span style="color:#bbb;">—</span>'
+        prev_margin = prev_ebitda / prev_rev * 100
+        delta = curr_margin - prev_margin
+        color = "#2a7a50" if delta >= 0 else "#b03030"
+        sign  = "+" if delta >= 0 else ""
+        return f'<span style="color:{color}; font-weight:600;">{sign}{delta:.1f} pp</span>'
+
     # Header
-    _th = "".join(
-        f'<th style="text-align:right;">{lbl}</th>'
-        f'<th style="text-align:center; color:#999; font-weight:500; font-size:0.74rem;">YoY</th>'
-        for _, lbl, _ in _metrics
-    )
+    _th = ""
+    for _, lbl, _ in _metrics:
+        _th += (
+            f'<th style="text-align:right;">{lbl}</th>'
+            f'<th style="text-align:center; color:#999; font-weight:500; font-size:0.74rem;">YoY</th>'
+        )
+        if lbl == "EBITDA":
+            _th += (
+                f'<th style="text-align:right;">EBITDA Margin</th>'
+                f'<th style="text-align:center; color:#999; font-weight:500; font-size:0.74rem;">YoY</th>'
+            )
     _header = f'<tr><th style="text-align:left;">Company</th>{_th}</tr>'
 
     # Rows
@@ -761,7 +867,7 @@ with tab2:
             continue
         color = COLORS.get(company, "#888")
         _td = ""
-        for col, _, fmt in _metrics:
+        for col, lbl, fmt in _metrics:
             val = crow.iloc[0][col]
             fmt_val = fmt.format(val) if pd.notna(val) else "N/A"
             _td += (
@@ -769,6 +875,20 @@ with tab2:
                 f'{fmt_val}</td>'
                 f'<td style="text-align:center;">{_fmt_yoy(val, _prev, company, col)}</td>'
             )
+            if lbl == "EBITDA":
+                _rev = crow.iloc[0]["Revenue ($M)"]
+                _ebi = crow.iloc[0]["Adj. EBITDA ($M)"]
+                if pd.notna(_rev) and pd.notna(_ebi) and _rev != 0:
+                    _mval = _ebi / _rev * 100
+                    _mfmt = f"{_mval:.1f}%"
+                else:
+                    _mval = None
+                    _mfmt = "N/A"
+                _td += (
+                    f'<td style="text-align:right; font-variant-numeric:tabular-nums;">'
+                    f'{_mfmt}</td>'
+                    f'<td style="text-align:center;">{_fmt_yoy_pp(_mval, _prev, company)}</td>'
+                )
         _rows += (
             f'<tr>'
             f'<td style="font-weight:600; color:{color}; white-space:nowrap;">{company}</td>'
@@ -902,6 +1022,22 @@ with tab4:
     _Q24 = [f"{q.split()[0]} {int(q.split()[1]) - 1}" for q in _Q25]
     _q4  = get_latest_per_company(hotel_kpis).copy()
 
+    def _latest_for(_col, _extra=None):
+        """Per-company latest row where `_col` is non-null.
+        Returns DataFrame with Company, _col, Quarter [+ any _extra columns]."""
+        _keep = ["Company", _col, "Quarter"] + (_extra or [])
+        _rows = []
+        for _c in COMPANY_NAMES:
+            _s = hotel_kpis[hotel_kpis["Company"] == _c]
+            _s = _s[_s["Quarter"].isin(QUARTERS)].copy()
+            _s["_o"] = _s["Quarter"].map({q: i for i, q in enumerate(QUARTERS)})
+            _s = _s.sort_values("_o", ascending=False)
+            _v = _s[_s[_col].notna()]
+            if not _v.empty:
+                _r = _v.iloc[0]
+                _rows.append({k: _r[k] for k in _keep if k in _r.index})
+        return pd.DataFrame(_rows) if _rows else pd.DataFrame(columns=_keep)
+
     _OP_THEME = dict(
         template="none",
         font=dict(family="Inter, Helvetica, Arial, sans-serif", size=13, color="#111"),
@@ -962,25 +1098,37 @@ with tab4:
     _plot(fig_revpar)
 
     if _missing_q1:
-        _today_str = pd.Timestamp.today().strftime("%B %d, %Y")
-        st.caption(f"*Q1 2026 reflects only companies that have reported as of {_today_str}.*")
+        st.caption(
+            f"*Q1 2026 reflects only companies that have reported as of "
+            f"{DASHBOARD_LAST_UPDATED}; remaining companies report in May 2026.*"
+        )
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
     # ── ADR & Occupancy (inline horizontal bars) ──────────────────────────────
     col1, col2 = st.columns(2)
 
-    def _horiz_bar(df_sorted, x_col, height=280):
+    def _horiz_bar(df_sorted, x_col, height=280, hfmt=None):
+        """Horizontal bar chart. If df_sorted has a 'Quarter' column it appears in hover."""
         fig = go.Figure()
+        _has_qtr = "Quarter" in df_sorted.columns
         for _, r in df_sorted.iterrows():
             co = str(r["Company"])
             val = r[x_col]
+            qtr = str(r["Quarter"]) if _has_qtr and pd.notna(r.get("Quarter")) else ""
             if pd.notna(val):
+                _val_fmt = hfmt % float(val) if hfmt else f"{float(val):,.2f}"
+                _htmpl = (
+                    f"<b>{co}</b><br>{_val_fmt}"
+                    + (f"<br><span style='color:#888;font-size:11px;'>{qtr}</span>" if qtr else "")
+                    + "<extra></extra>"
+                )
                 fig.add_trace(go.Bar(
                     x=[float(val)], y=[co],
                     name=co, orientation="h",
                     marker_color=COLORS.get(co, "#888"), opacity=0.85,
                     showlegend=False,
+                    hovertemplate=_htmpl,
                 ))
             else:
                 fig.add_trace(go.Bar(
@@ -999,36 +1147,66 @@ with tab4:
         )
         return fig
 
+    _adr_df  = _latest_for("ADR")
+    _occ_df  = _latest_for("Occupancy %")
+
     with col1:
-        st.markdown("## ADR — Q4 2025")
-        if not _q4.empty:
-            _plot(_horiz_bar(_q4.sort_values("ADR"), "ADR"))
+        st.markdown("## ADR")
+        if not _adr_df.empty:
+            _plot(_horiz_bar(_adr_df.sort_values("ADR"), "ADR", hfmt="$%.2f"))
 
     with col2:
-        st.markdown("## Occupancy — Q4 2025")
-        if not _q4.empty:
-            _plot(_horiz_bar(_q4.sort_values("Occupancy %"), "Occupancy %"))
+        st.markdown("## Occupancy Rate")
+        if not _occ_df.empty:
+            _plot(_horiz_bar(_occ_df.sort_values("Occupancy %"), "Occupancy %", hfmt="%.1f%%"))
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
     # ── ADR vs Occupancy scatter (inline) ─────────────────────────────────────
-    st.markdown("## ADR vs Occupancy — Q4 2025")
-    if not _q4.empty:
-        _max_rooms = float(_q4["System-wide Rooms"].max())
+    # Per-company: latest quarter where BOTH ADR and Occupancy are non-null
+    _sc_rows = []
+    for _c in COMPANY_NAMES:
+        _s = hotel_kpis[hotel_kpis["Company"] == _c]
+        _s = _s[_s["Quarter"].isin(QUARTERS)].copy()
+        _s["_o"] = _s["Quarter"].map({q: i for i, q in enumerate(QUARTERS)})
+        _s = _s.sort_values("_o", ascending=False)
+        _v = _s[_s["ADR"].notna() & _s["Occupancy %"].notna() & _s["System-wide Rooms"].notna()]
+        if not _v.empty:
+            _r = _v.iloc[0]
+            _sc_rows.append({
+                "Company": _c,
+                "ADR": float(_r["ADR"]),
+                "Occupancy %": float(_r["Occupancy %"]),
+                "System-wide Rooms": float(_r["System-wide Rooms"]),
+                "Quarter": str(_r["Quarter"]),
+            })
+    _sc_df = pd.DataFrame(_sc_rows)
+
+    st.markdown("## ADR vs Occupancy")
+    if not _sc_df.empty:
+        _max_rooms = _sc_df["System-wide Rooms"].max()
         if not pd.notna(_max_rooms) or _max_rooms == 0:
             _max_rooms = 1
         fig_sc = go.Figure()
-        for _, r in _q4.iterrows():
+        for _, r in _sc_df.iterrows():
             co = str(r["Company"])
-            _sz_raw = float(r["System-wide Rooms"]) / _max_rooms * 55 if pd.notna(r["System-wide Rooms"]) else 0
-            sz = max(14, int(_sz_raw) if pd.notna(_sz_raw) and _sz_raw == _sz_raw else 20)
+            _sz_raw = r["System-wide Rooms"] / _max_rooms * 55
+            sz = max(14, int(_sz_raw))
             fig_sc.add_trace(go.Scatter(
-                x=[float(r["Occupancy %"])], y=[float(r["ADR"])],
+                x=[r["Occupancy %"]], y=[r["ADR"]],
                 mode="markers+text", name=co,
                 text=[co], textposition="top center",
                 textfont=dict(color="#111", size=12),
                 marker=dict(color=COLORS.get(co, "#888"), size=sz, opacity=0.82,
                             line=dict(color="#555", width=1)),
+                customdata=[[r["Quarter"], r["ADR"], r["Occupancy %"]]],
+                hovertemplate=(
+                    "<b>%{text}</b><br>"
+                    "ADR: $%{customdata[1]:.2f}<br>"
+                    "Occupancy: %{customdata[2]:.1f}%<br>"
+                    "<span style='color:#888;font-size:11px;'>%{customdata[0]}</span>"
+                    "<extra></extra>"
+                ),
                 showlegend=False,
             ))
         fig_sc.update_layout(
@@ -1043,30 +1221,40 @@ with tab4:
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
     # ── Pipeline pair ─────────────────────────────────────────────────────────
+    _pipe_df = _latest_for("Pipeline Rooms", _extra=["System-wide Rooms"])
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("## Development Pipeline — Q4 2025")
-        if not _q4.empty:
-            _plot(_horiz_bar(_q4.sort_values("Pipeline Rooms"), "Pipeline Rooms"))
+        st.markdown("## Development Pipeline")
+        if not _pipe_df.empty:
+            _plot(_horiz_bar(
+                _pipe_df.sort_values("Pipeline Rooms"),
+                "Pipeline Rooms", hfmt="%,.0f rooms",
+            ))
 
     with col2:
-        st.markdown("## Pipeline as % of Existing Rooms — Q4 2025")
-        if not _q4.empty:
+        st.markdown("## Pipeline as % of Existing Rooms")
+        if not _pipe_df.empty:
             _pct_rows = []
-            for _, _r in _q4.iterrows():
+            for _, _r in _pipe_df.iterrows():
                 _co = str(_r["Company"])
                 _pipe = _r["Pipeline Rooms"]
-                _base = COMPANY_ROOMS.get(_co)
-                _pct = _pipe / _base * 100 if (pd.notna(_pipe) and _base) else float("nan")
-                _pct_rows.append({"Company": _co, "Pct": _pct})
+                _base = _r.get("System-wide Rooms")
+                _pct = _pipe / _base * 100 if (pd.notna(_pipe) and pd.notna(_base) and _base) else float("nan")
+                _pct_rows.append({"Company": _co, "Pct": _pct, "Quarter": _r.get("Quarter", "")})
             _pct_df = pd.DataFrame(_pct_rows).sort_values("Pct", na_position="last")
 
             fig_pipe_pct = go.Figure()
             for _, _r in _pct_df.iterrows():
                 _co = str(_r["Company"])
                 _v = _r["Pct"]
+                _qtr = str(_r.get("Quarter", ""))
                 if pd.notna(_v):
+                    _htmpl = (
+                        f"<b>{_co}</b><br>{_v:.1f}%"
+                        + (f"<br><span style='color:#888;font-size:11px;'>{_qtr}</span>" if _qtr else "")
+                        + "<extra></extra>"
+                    )
                     fig_pipe_pct.add_trace(go.Bar(
                         x=[_v], y=[_co],
                         name=_co, orientation="h",
@@ -1077,6 +1265,7 @@ with tab4:
                         cliponaxis=False,
                         textfont=dict(size=11, color="#555",
                                       family="Inter, Helvetica, Arial, sans-serif"),
+                        hovertemplate=_htmpl,
                     ))
                 else:
                     fig_pipe_pct.add_trace(go.Bar(
@@ -1103,7 +1292,7 @@ with tab4:
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
     # ── Net Unit Growth ───────────────────────────────────────────────────────
-    st.markdown("## Net Unit Growth — FY 2025")
+    st.markdown("## Net Unit Growth")
     _kpis_q25 = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)]
     fig_nug = go.Figure()
     _x_ord = {q: i for i, q in enumerate(_Q25)}
@@ -1190,6 +1379,84 @@ with tab5:
                     sign = "+" if _pct >= 0 else ""
                     _delta = f"{sign}{_pct:.1f}% YoY"
                 st.metric(_co, f"{_m25:.0f}M", delta=_delta)
+
+    # ── Loyalty Room Night Contribution ──────────────────────────────────────
+    st.markdown(
+        '<div style="background:#f5f7fa; border:1px solid #dde4ef; border-radius:8px; '
+        'padding:12px 18px; margin:18px 0; font-size:0.82rem; color:#555; line-height:1.75;">'
+        '<strong>Loyalty Room Night Contribution</strong> — Share of total room nights booked by '
+        'loyalty program members. Definitions and disclosure cadence vary by company; some report '
+        'global figures, others Americas-only or system-wide. See per-card footnotes for the exact '
+        'basis of each figure.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Loyalty Contribution to Room Nights — FY 2025")
+
+    # Data sourced from verified public filings only — no estimates or interpolations.
+    # Marriott: Q4 & FY 2025 Earnings Press Release (prnewswire.com, Feb 2026)
+    # IHG: FY 2025 Full Year Results (ihgplc.com, Feb 2026)
+    # Accor: ALL 100M members announcement (group.accor.com, Mar 2025) — likely FY 2024 data
+    # Hilton & Hyatt: metric not disclosed in accessible FY 2025 public filings
+    _LOYALTY_RN = {
+        "Marriott": {"value": "68%",  "period": "FY 2025", "fn": "¹"},
+        "Hilton":   {"value": None},
+        "IHG":      {"value": "66%",  "period": "FY 2025", "fn": "²"},
+        "Hyatt":    {"value": None},
+        "Accor":    {"value": "~33%", "period": "FY 2024", "fn": "³"},
+    }
+
+    _rn_cols = st.columns(5)
+    for _i, _co in enumerate(COMPANY_NAMES):
+        with _rn_cols[_i]:
+            _rncol = COLORS.get(_co, "#888")
+            _rnd   = _LOYALTY_RN.get(_co, {})
+            _rnval = _rnd.get("value")
+            _rnper = _rnd.get("period", "")
+            _rnfn  = _rnd.get("fn", "")
+            if _rnval:
+                st.markdown(
+                    f'<div style="border:1px solid #e8e8e8; border-top:3px solid {_rncol}; '
+                    f'border-radius:6px; padding:16px 8px; text-align:center; '
+                    f'background:#fff; min-height:108px;">'
+                    f'<p style="font-size:0.72rem; font-weight:700; color:{_rncol}; '
+                    f'text-transform:uppercase; letter-spacing:0.05em; margin:0 0 6px 0;">{_co}</p>'
+                    f'<p style="font-size:1.85rem; font-weight:700; color:#111; margin:0; line-height:1.2;">'
+                    f'{_rnval}<sup style="font-size:0.6rem; color:#888; font-weight:400;">{_rnfn}</sup></p>'
+                    f'<p style="font-size:0.72rem; color:#999; margin:4px 0 0 0;">{_rnper} · Global</p>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    f'<div style="border:1px solid #e8e8e8; border-top:3px solid {_rncol}; '
+                    f'border-radius:6px; padding:16px 8px; text-align:center; '
+                    f'background:#fafafa; min-height:108px;">'
+                    f'<p style="font-size:0.72rem; font-weight:700; color:{_rncol}; '
+                    f'text-transform:uppercase; letter-spacing:0.05em; margin:0 0 8px 0;">{_co}</p>'
+                    f'<p style="font-size:0.9rem; font-style:italic; color:#aaa; margin:0;">Not disclosed</p>'
+                    f'<p style="font-size:0.68rem; color:#bbb; margin:5px 0 0 0; line-height:1.4;">'
+                    f'Not reported in<br>public FY 2025 filings</p>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+    st.caption(
+        "¹ Marriott: 68% globally / 75% U.S. & Canada. "
+        "Source: Marriott Q4 & FY 2025 Earnings Press Release, Feb 2026 (CEO remarks). "
+        "² IHG: 66% globally / 73% Americas. "
+        "Source: IHG FY 2025 Full Year Results, Feb 2026. "
+        "³ Accor: \"1 in 3 room nights\" per ALL 100M-member announcement (Accor group.accor.com, "
+        "Mar 2025); figure likely reflects FY 2024 — FY 2025 specific figure not confirmed in "
+        "accessible public filings. "
+        "Hilton and Hyatt do not disclose this metric in public filings reviewed."
+    )
+    st.caption(
+        "*Figures shown are the global figure where dual (global + regional) disclosures exist. "
+        "Definitions vary: Marriott specifies U.S. & Canada separately; IHG specifies Americas. "
+        "Not directly comparable across brands.*"
+    )
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
