@@ -89,6 +89,14 @@ def load_digital_news() -> pd.DataFrame:
     return pd.read_csv(path, encoding="utf-8").dropna(how="all")
 
 
+@st.cache_data(ttl=600)
+def load_announced_growth() -> pd.DataFrame:
+    path = os.path.join(DATA_DIR, "announced_growth.csv")
+    df = pd.read_csv(path, encoding="utf-8").dropna(how="all")
+    df["Growth"] = pd.to_numeric(df["Growth"], errors="coerce")
+    return df
+
+
 def get_latest_quarter(df: pd.DataFrame) -> pd.DataFrame:
     available = [q for q in QUARTERS if q in df["Quarter"].values]
     if not available:

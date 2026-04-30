@@ -17,7 +17,7 @@ from scrapers.market_data import (
 from utils.data_loader import (
     load_hotel_kpis, load_hotel_financials_annual,
     load_luxury_brands, load_luxury_news, load_digital_trends,
-    load_loyalty_historical, load_digital_news,
+    load_loyalty_historical, load_digital_news, load_announced_growth,
     get_latest_quarter, get_latest_per_company, get_logo_path
 )
 import calendar as _calendar
@@ -382,6 +382,7 @@ luxury_news = load_luxury_news()
 digital_trends = load_digital_trends()
 loyalty_historical = load_loyalty_historical()
 digital_news = load_digital_news()
+announced_growth = load_announced_growth()
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -651,7 +652,7 @@ with tab2:
         f"remaining companies report in May 2026.*"
     )
 
-    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None):
+    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None):
         """Compact YoY table: latest period value + change vs same quarter prior year per brand."""
         if len(period_order) < 1:
             return ""
@@ -678,12 +679,31 @@ with tab2:
                    if not pr.empty and metric in pr.columns and pd.notna(pr.iloc[0][metric])
                    else None)
             col = COLORS.get(co, "#888")
+            # Check for manually announced growth override
+            ann_row = None
+            if df_announced is not None and cv is not None:
+                _mask = (
+                    (df_announced["Company"] == co) &
+                    (df_announced["Quarter"] == curr_q) &
+                    (df_announced["Metric"] == metric)
+                )
+                _ann = df_announced[_mask]
+                if not _ann.empty and pd.notna(_ann.iloc[0]["Growth"]):
+                    ann_row = _ann.iloc[0]
             if cv is None:
                 val_td = f'<td style="{_tdr} color:#ccc;">—</td>'
                 chg_td = f'<td style="{_tdr} color:#bbb; font-size:0.75rem; font-style:italic;">not yet reported</td>'
             else:
                 val_td = f'<td style="{_tdr}">{fmt.format(cv)}{suffix}</td>'
-                if pv is not None and pv != 0:
+                if ann_row is not None:
+                    g = float(ann_row["Growth"])
+                    sign = "+" if g >= 0 else ""
+                    gc = "#2a7a50" if g >= 0 else "#b03030"
+                    if ann_row["Type"] == "pp" or as_pp:
+                        chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{g:.1f} pp</td>'
+                    else:
+                        chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{g:.1f}%</td>'
+                elif pv is not None and pv != 0:
                     if as_pp:
                         d = cv - pv
                         sign = "+" if d >= 0 else ""
@@ -721,7 +741,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev),
+            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
     with col2:
@@ -735,7 +755,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev),
+            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
@@ -751,7 +771,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev),
+            st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
     with col2:
@@ -779,7 +799,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             st.caption(_q1_cap)
-            st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}", df_yoy=df_prev),
+            st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
     # ── EBITDA Margin (full-width, 5th chart) ─────────────────────────────────
@@ -803,7 +823,7 @@ with tab2:
         )
         st.caption(_q1_cap)
         st.markdown(_qoq_html(_margin_df, "EBITDA Margin (%)", fmt="{:.1f}", suffix="%",
-                               as_pp=True, df_yoy=_margin_prev_df),
+                               as_pp=True, df_yoy=_margin_prev_df, df_announced=announced_growth),
                     unsafe_allow_html=True)
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
@@ -1053,7 +1073,7 @@ with tab4:
                 _rows.append({k: _r[k] for k in _keep if k in _r.index})
         return pd.DataFrame(_rows) if _rows else pd.DataFrame(columns=_keep)
 
-    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix="", df_yoy=None):
+    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix="", df_yoy=None, df_announced=None):
         """Compact YoY table for Operational Overview charts."""
         if len(quarters) < 1:
             return ""
@@ -1080,12 +1100,31 @@ with tab4:
                    if not pr.empty and metric in pr.columns and pd.notna(pr.iloc[0][metric])
                    else None)
             col = COLORS.get(co, "#888")
+            # Check for manually announced growth override
+            ann_row = None
+            if df_announced is not None and cv is not None:
+                _mask = (
+                    (df_announced["Company"] == co) &
+                    (df_announced["Quarter"] == curr_q) &
+                    (df_announced["Metric"] == metric)
+                )
+                _ann = df_announced[_mask]
+                if not _ann.empty and pd.notna(_ann.iloc[0]["Growth"]):
+                    ann_row = _ann.iloc[0]
             if cv is None:
                 val_td = f'<td style="{_tdr} color:#ccc;">—</td>'
                 chg_td = f'<td style="{_tdr} color:#bbb; font-size:0.75rem; font-style:italic;">not yet reported</td>'
             else:
                 val_td = f'<td style="{_tdr}">{fmt.format(cv)}{suffix}</td>'
-                if pv is not None and pv != 0:
+                if ann_row is not None:
+                    g = float(ann_row["Growth"])
+                    sign = "+" if g >= 0 else ""
+                    gc = "#2a7a50" if g >= 0 else "#b03030"
+                    if ann_row["Type"] == "pp":
+                        chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{g:.1f} pp</td>'
+                    else:
+                        chg_td = f'<td style="{_tdr} color:{gc}; font-weight:600;">{sign}{g:.1f}%</td>'
+                elif pv is not None and pv != 0:
                     g = (cv - pv) / abs(pv) * 100
                     sign = "+" if g >= 0 else ""
                     gc = "#2a7a50" if g >= 0 else "#b03030"
@@ -1169,7 +1208,7 @@ with tab4:
             f"{DASHBOARD_LAST_UPDATED}; remaining companies report in May 2026.*"
         )
     st.markdown(
-        _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}", df_yoy=hotel_kpis),
+        _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}", df_yoy=hotel_kpis, df_announced=announced_growth),
         unsafe_allow_html=True,
     )
 
