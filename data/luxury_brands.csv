@@ -1,11 +1,11 @@
 Company,Brand,Properties,Rooms,Description
-Marriott,The Ritz-Carlton,120,38000,Iconic ultra-luxury brand with global presence
-Marriott,St. Regis,60,15000,Ultra-luxury hotels and resorts with bespoke butler service
-Marriott,W Hotels,75,23000,Luxury lifestyle brand with a bold music-driven identity
-Marriott,EDITION,18,5500,Boutique luxury in partnership with Ian Schrager
-Marriott,The Luxury Collection,125,32000,Curated collection of iconic and historic luxury hotels
-Marriott,JW Marriott,130,42000,Upper-luxury full-service hotels for discerning travelers
-Marriott,Bulgari Hotels,12,1500,Ultra-luxury brand in partnership with Bulgari
+Marriott,The Ritz-Carlton,123,39000,"Authentic, rare and enriching experiences across city sanctuaries, coastal retreats and rare destinations worldwide"
+Marriott,St. Regis,68,17000,"Legendary service and timeless sophistication at the world's premier addresses — defined by signature glamour and heritage"
+Marriott,W Hotels,72,22000,"Bold design, elevated service and dynamic cultural programming for next-generation luxury travelers"
+Marriott,EDITION,24,7300,"One-of-a-kind hotels that redefine the codes of traditional luxury, honouring place and individuality"
+Marriott,The Luxury Collection,141,36000,"Transformative travel through the world's most storied destinations — iconic properties that define and elevate their locale"
+Marriott,JW Marriott,136,44000,"Mindful escapes designed to restore body, mind and spirit through exceptional hospitality where every detail supports personal renewal"
+Marriott,Bulgari Hotels & Resorts,9,1100,"Ultra-luxury urban sanctuaries blending Italian design excellence and the art of fine living — a partnership between Marriott and the iconic Bulgari jewellery house"
 Hilton,Waldorf Astoria,44,16100,Timeless ultra-luxury brand defined by iconic architecture and bespoke service; includes the storied New York flagship and landmark properties worldwide
 Hilton,Conrad Hotels & Resorts,55,17600,Smart luxury for the modern traveller — bold design and curated contemporary art with intuitive locally-inspired service across five continents
 Hilton,LXR Hotels & Resorts,20,4600,Hand-picked collection of independent luxury hotels and resorts celebrating the timeless pursuit of personal adventure in the world's most alluring destinations
@@ -15,11 +15,11 @@ Hyatt,Alila,19,3400,Alila means Surprise in Sanskrit — innovative design and c
 Hyatt,Miraval,3,370,Ultra-luxury all-inclusive wellness retreats across three U.S. destinations focused on mindful living and transformative experiences
 Hyatt,Impression by Hyatt,2,323,Ultra-luxury adults-only all-inclusive resorts combining highly personalized service with curated immersive experiences
 Hyatt,The Unbound Collection by Hyatt,55,12000,Curated collection of one-of-a-kind independent hotels celebrating local culture and the unique stories of their destinations
-IHG,Six Senses,27,2100,Wellness-focused ultra-luxury resorts and residences
-IHG,Regent Hotels & Resorts,12,4200,Timeless ultra-luxury brand in iconic global destinations
-IHG,InterContinental Hotels & Resorts,235,76000,Flagship luxury brand with 75+ year global heritage
-IHG,Kimpton Hotels & Restaurants,82,17000,Boutique luxury lifestyle brand with a playful and local soul
-IHG,Vignette Collection,25,5200,Curated soft brand of distinctive independent hotels
+IHG,Six Senses,27,2100,"Wellness and sustainability-led ultra-luxury in the world's most sought-after locations — built on exceptional design, people and a committed platform of wellness"
+IHG,Regent Hotels & Resorts,11,3900,"Each hotel embodies unique charm and elegance — stays both serene and sensational that inspire stories for even the most seasoned travellers"
+IHG,InterContinental Hotels & Resorts,248,80000,"International know-how and local cultural wisdom — authentic, experiential and considerate luxury that puts people at the heart of reframing hospitality"
+IHG,Vignette Collection,33,6900,"A family of one-of-a-kind exclusive hotels recognised for purposeful luxury, memorable rituals and stays authentically connected to their location"
+IHG,Kimpton Hotels & Restaurants,89,18400,"Pioneering the boutique hotel concept for four decades — design-led hotels renowned for heartfelt hospitality and immersive lifestyle experiences"
 Accor,Raffles,24,3736,Legendary ultra-luxury brand born in Singapore in 1887
 Accor,Fairmont,93,34786,Grand luxury hotels and landmark resorts across the globe
 Accor,Sofitel,120,32026,French art de vivre luxury hospitality in gateway cities worldwide
