@@ -73,7 +73,7 @@ SOURCES = {
     ],
 }
 
-DASHBOARD_LAST_UPDATED = "April 28, 2026"
+DASHBOARD_LAST_UPDATED = "May 6, 2026"
 
 
 def render_sources(key):
@@ -838,36 +838,6 @@ with tab2:
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
-    # ── Portfolio Metrics (quarterly only) ────────────────────────────────────
-    if is_quarterly:
-        st.markdown("## Portfolio Scale")
-        st.caption("*Growth vs prior sequential quarter.*")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**Properties**")
-            st.markdown(_qoq_html(df_curr, "Properties", fmt="{:,.0f}", seq=True),
-                        unsafe_allow_html=True)
-        with col2:
-            st.markdown("**System-wide Rooms**")
-            st.markdown(_qoq_html(df_curr, "System-wide Rooms", fmt="{:,.0f}", seq=True),
-                        unsafe_allow_html=True)
-        with col3:
-            st.markdown("**Pipeline Rooms**")
-            st.markdown(_qoq_html(df_curr, "Pipeline Rooms", fmt="{:,.0f}", seq=True),
-                        unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**Net Unit Growth**")
-            st.markdown(_qoq_html(df_curr, "Net Unit Growth %", fmt="{:.1f}", suffix="%",
-                                  as_pp=True, seq=True),
-                        unsafe_allow_html=True)
-        with col2:
-            st.markdown("**Loyalty Members**")
-            st.markdown(_qoq_html(df_curr, "Loyalty Members (M)", fmt="{:.0f}", suffix="M",
-                                  seq=True),
-                        unsafe_allow_html=True)
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
     # ── Financial Summary ─────────────────────────────────────────────────────
     st.markdown("## Financial Summary")
 
@@ -1113,13 +1083,20 @@ with tab4:
                 _rows.append({k: _r[k] for k in _keep if k in _r.index})
         return pd.DataFrame(_rows) if _rows else pd.DataFrame(columns=_keep)
 
-    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix="", df_yoy=None, df_announced=None):
-        """Compact YoY table for Operational Overview charts."""
+    def _op_qoq_html(df, metric, quarters, fmt="{:.1f}", suffix="", df_yoy=None, df_announced=None, seq=False):
+        """Compact comparison table for Operational Overview charts.
+        seq=False (default): compare to same quarter prior year (YoY).
+        seq=True: compare to previous sequential quarter (QoQ).
+        """
         if len(quarters) < 1:
             return ""
         curr_q = quarters[-1]
         _p = curr_q.split()
-        yoy_q = f"{_p[0]} {int(_p[1]) - 1}"
+        if seq:
+            q_num = int(_p[0][1])
+            cmp_q = f"Q4 {int(_p[1]) - 1}" if q_num == 1 else f"Q{q_num - 1} {_p[1]}"
+        else:
+            cmp_q = f"{_p[0]} {int(_p[1]) - 1}"
         _fs = "font-family:Inter,Helvetica,Arial,sans-serif; font-size:0.80rem;"
         _th = ("font-size:0.68rem; font-weight:600; color:#aaa; text-transform:uppercase; "
                "letter-spacing:0.05em; padding:4px 8px; border-bottom:1px solid #e8e8e8; "
@@ -1130,9 +1107,12 @@ with tab4:
         for co in COMPANY_NAMES:
             cdf = df[df["Company"] == co]
             cr  = cdf[cdf["Quarter"] == curr_q]
-            _yoy_src = df_yoy if df_yoy is not None else df
-            ydf = _yoy_src[_yoy_src["Company"] == co]
-            pr  = ydf[ydf["Quarter"] == yoy_q]
+            if seq:
+                pr = cdf[cdf["Quarter"] == cmp_q]
+            else:
+                _yoy_src = df_yoy if df_yoy is not None else df
+                ydf = _yoy_src[_yoy_src["Company"] == co]
+                pr  = ydf[ydf["Quarter"] == cmp_q]
             cv  = (float(cr.iloc[0][metric])
                    if not cr.empty and metric in cr.columns and pd.notna(cr.iloc[0][metric])
                    else None)
@@ -1179,7 +1159,7 @@ with tab4:
             f'<thead><tr>'
             f'<th style="{_th} text-align:left;">Brand</th>'
             f'<th style="{_th} text-align:right;">{curr_q}</th>'
-            f'<th style="{_th} text-align:right;">vs {yoy_q}</th>'
+            f'<th style="{_th} text-align:right;">vs {cmp_q}</th>'
             f'</tr></thead><tbody>{rows}</tbody></table></div>'
         )
 
@@ -1465,6 +1445,33 @@ with tab4:
     )
     _plot(fig_nug)
 
+    # ── Portfolio Scale tables ─────────────────────────────────────────────────
+    st.caption("*Growth vs prior sequential quarter.*")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Properties**")
+        st.markdown(_op_qoq_html(hotel_kpis, "Properties", _Q25, fmt="{:,.0f}", seq=True),
+                    unsafe_allow_html=True)
+    with col2:
+        st.markdown("**System-wide Rooms**")
+        st.markdown(_op_qoq_html(hotel_kpis, "System-wide Rooms", _Q25, fmt="{:,.0f}", seq=True),
+                    unsafe_allow_html=True)
+    with col3:
+        st.markdown("**Pipeline Rooms**")
+        st.markdown(_op_qoq_html(hotel_kpis, "Pipeline Rooms", _Q25, fmt="{:,.0f}", seq=True),
+                    unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Net Unit Growth**")
+        st.markdown(_op_qoq_html(hotel_kpis, "Net Unit Growth %", _Q25, fmt="{:.1f}", suffix="%",
+                                 seq=True),
+                    unsafe_allow_html=True)
+    with col2:
+        st.markdown("**Loyalty Members**")
+        st.markdown(_op_qoq_html(hotel_kpis, "Loyalty Members (M)", _Q25, fmt="{:.0f}", suffix="M",
+                                 seq=True),
+                    unsafe_allow_html=True)
+
     render_sources("operational_overview")
 
 
@@ -1473,7 +1480,7 @@ with tab4:
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab5:
     # ── Loyalty Membership — Annual Line Chart (2022–2025) ────────────────────
-    st.markdown("## Loyalty Membership Growth (2022–2025)")
+    st.markdown("## Loyalty Membership Growth (2022–2026)")
 
     _DIG_THEME = dict(
         template="none",
@@ -1500,13 +1507,14 @@ with tab5:
         **_DIG_THEME, height=360,
         legend=dict(orientation="h", yanchor="bottom", y=1.02,
                     xanchor="right", x=1, font=dict(size=12, color="#111")),
-        xaxis=dict(**_DIG_AXIS, tickmode="array", tickvals=[2022, 2023, 2024, 2025],
+        xaxis=dict(**_DIG_AXIS, tickmode="array", tickvals=[2022, 2023, 2024, 2025, 2026],
                    tickformat="d"),
         yaxis=dict(**_DIG_AXIS, title="Members (Millions)",
                    title_font=dict(color="#111", size=13,
                                    family="Inter, Helvetica, Arial, sans-serif")),
     )
     _plot(fig_loyalty)
+    st.caption("*2026 data reflects Q1 2026 reported figures. IHG and Accor have not yet reported Q1 2026 loyalty membership.*")
 
     # ── FY 2025 Loyalty metric boxes ──────────────────────────────────────────
     st.markdown("### FY 2025 Loyalty Members")
