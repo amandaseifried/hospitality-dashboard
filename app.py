@@ -436,7 +436,7 @@ with tab1:
 
     # Portfolio Scale chart — dual axes: Properties (left) and Rooms (right)
     st.markdown("## Portfolio Scale")
-    latest = hotel_kpis[hotel_kpis["Quarter"] == "Q4 2025"]
+    latest = get_latest_per_company(hotel_kpis)
     if not latest.empty:
         # Sort by market cap order
         latest = latest.set_index("Company").loc[
@@ -526,7 +526,7 @@ with tab1:
 
     # Stock chart with time horizon selector
     st.markdown("### Stock Performance")
-    period_options = {"YTD": "ytd", "1 Year": "1y", "3 Years": "3y", "5 Years": "5y"}
+    period_options = {"1 Month": "1mo", "YTD": "ytd", "1 Year": "1y", "3 Years": "3y", "5 Years": "5y"}
     selected_period = st.selectbox(
         "Time Horizon", list(period_options.keys()), index=1, label_visibility="collapsed",
         key="stock_period",
@@ -647,9 +647,8 @@ with tab2:
 
     # ── Four combo charts (growth lines on annual only) ───────────────────────
     _q1_cap = (
-        f"*Q1 2026 reflects only companies that have reported as of "
-        f"{DASHBOARD_LAST_UPDATED}; "
-        f"remaining companies report in May 2026.*"
+        "*Q1 reflects all metrics announced by companies. "
+        "IHG and Accor provide trading updates only, with half-year performance following in Q2.*"
     )
 
     def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None, seq=False):
@@ -1224,8 +1223,8 @@ with tab4:
 
     if _missing_q1:
         st.caption(
-            f"*Q1 2026 reflects only companies that have reported as of "
-            f"{DASHBOARD_LAST_UPDATED}; remaining companies report in May 2026.*"
+            "*Q1 reflects all metrics announced by companies. "
+            "IHG and Accor provide trading updates only, with half-year performance following in Q2.*"
         )
     st.markdown(
         _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}", df_yoy=hotel_kpis, df_announced=announced_growth),
@@ -1516,26 +1515,27 @@ with tab5:
     _plot(fig_loyalty)
     st.caption("*2026 data reflects Q1 2026 reported figures. Accor has not yet reported Q1 2026 loyalty membership.*")
 
-    # ── FY 2025 Loyalty metric boxes ──────────────────────────────────────────
-    st.markdown("### FY 2025 Loyalty Members")
+    # ── Current Loyalty Members ────────────────────────────────────────────────
+    st.markdown("### Current Loyalty Members")
     _loy_mcols = st.columns(5)
     for _i, _co in enumerate(COMPANY_NAMES):
         with _loy_mcols[_i]:
-            _r25 = loyalty_historical[
-                (loyalty_historical["Company"] == _co) & (loyalty_historical["Year"] == 2025)
-            ]
-            _r24 = loyalty_historical[
-                (loyalty_historical["Company"] == _co) & (loyalty_historical["Year"] == 2024)
-            ]
-            if not _r25.empty:
-                _m25 = float(_r25.iloc[0]["Loyalty Members (M)"])
-                _delta = None
-                if not _r24.empty:
-                    _m24 = float(_r24.iloc[0]["Loyalty Members (M)"])
-                    _pct = (_m25 - _m24) / _m24 * 100
-                    sign = "+" if _pct >= 0 else ""
-                    _delta = f"{sign}{_pct:.1f}% YoY"
-                st.metric(_co, f"{_m25:.0f}M", delta=_delta)
+            _lco = loyalty_historical[loyalty_historical["Company"] == _co].sort_values("Year")
+            if _lco.empty:
+                continue
+            _cur = _lco.iloc[-1]
+            _cur_yr = int(_cur["Year"])
+            _cur_m  = float(_cur["Loyalty Members (M)"])
+            _period = f"Q1 {_cur_yr}" if _cur_yr >= 2026 else f"FY {_cur_yr}"
+            _delta = None
+            if len(_lco) >= 2:
+                _prev_m = float(_lco.iloc[-2]["Loyalty Members (M)"])
+                _pct = (_cur_m - _prev_m) / _prev_m * 100
+                sign = "+" if _pct >= 0 else ""
+                _prev_yr = int(_lco.iloc[-2]["Year"])
+                _prev_period = f"Q1 {_prev_yr}" if _prev_yr >= 2026 else f"FY {_prev_yr}"
+                _delta = f"{sign}{_pct:.1f}% vs {_prev_period}"
+            st.metric(f"{_co} ({_period})", f"{_cur_m:.0f}M", delta=_delta)
 
     # ── Loyalty Room Night Contribution ──────────────────────────────────────
     st.markdown(
