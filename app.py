@@ -73,7 +73,7 @@ SOURCES = {
     ],
 }
 
-DASHBOARD_LAST_UPDATED = "May 6, 2026"
+DASHBOARD_LAST_UPDATED = "May 7, 2026"
 
 
 def render_sources(key):
@@ -1514,7 +1514,7 @@ with tab5:
                                    family="Inter, Helvetica, Arial, sans-serif")),
     )
     _plot(fig_loyalty)
-    st.caption("*2026 data reflects Q1 2026 reported figures. IHG and Accor have not yet reported Q1 2026 loyalty membership.*")
+    st.caption("*2026 data reflects Q1 2026 reported figures. Accor has not yet reported Q1 2026 loyalty membership.*")
 
     # ── FY 2025 Loyalty metric boxes ──────────────────────────────────────────
     st.markdown("### FY 2025 Loyalty Members")
