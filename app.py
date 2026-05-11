@@ -1041,6 +1041,102 @@ with tab3:
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
+    # ── Ultra-Luxury Reference Companies ──────────────────────────────────────
+    st.markdown("## Ultra-Luxury Reference")
+    st.markdown(
+        '<div style="background:#fffbf0; border:1px solid #f0e6c8; border-radius:8px; '
+        'padding:10px 16px; margin-bottom:20px; font-size:0.82rem; color:#7a6a3a;">'
+        '<em>The companies below operate primarily owned or leased hotels (asset-heavy model). '
+        'Unlike the Big 5 managed/franchised operators, their financial metrics are not directly '
+        'comparable. Shown here for brand and luxury market context only. Metrics are FY 2025 estimates.</em>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Shangri-La
+    st.markdown(
+        '<div style="border-left: 4px solid #8B6914; padding: 8px 16px; '
+        'margin: 20px 0 12px 0; background: #fafafa; border-radius: 0 8px 8px 0;">'
+        '<span style="font-weight: 600; font-size: 1.05rem; color: #8B6914;">Shangri-La Group</span>'
+        '<span style="color: #888; font-size: 0.82rem; margin-left: 16px;">'
+        '~102 luxury properties &middot; ~29,000 rooms &middot; FY 2025 est.</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    _sl_brands = [
+        ("Shangri-La Hotels & Resorts", "~43 properties",
+         "Flagship ultra-luxury brand; iconic city hotels and resorts across Asia-Pacific, Middle East, and Europe."),
+        ("Kerry Hotels", "~16 properties",
+         "Contemporary luxury positioned as a local discovery brand, primarily in China and Southeast Asia."),
+        ("JEN by Shangri-La", "~15 properties",
+         "Upper-upscale lifestyle brand targeting modern business travelers, primarily in Asia."),
+        ("Traders Hotels", "~13 properties",
+         "Upper-midscale brand with practical luxury positioning, predominantly in Asia."),
+    ]
+    _sl_cols = st.columns(4)
+    for _j, (_bname, _bprops, _bdesc) in enumerate(_sl_brands):
+        with _sl_cols[_j]:
+            st.markdown(
+                f'<div class="brand-card">'
+                f'<div class="brand-name">{_bname}</div>'
+                f'<div class="brand-detail">{_bprops}</div>'
+                f'<div class="brand-detail" style="margin-top:4px; font-style:italic;">{_bdesc}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    st.caption(
+        "*Shangri-La Group (HKEX: 0069) owns and operates the majority of its hotels. "
+        "FY 2025: Revenue ~HKD 17.6B (~USD 2.2B); RevPAR ~USD 111; Occupancy ~64.7%. "
+        "Asset-heavy model — not directly comparable to the managed/franchised Big 5.*"
+    )
+
+    # Mandarin Oriental
+    st.markdown(
+        '<div style="border-left: 4px solid #5a4030; padding: 8px 16px; '
+        'margin: 24px 0 12px 0; background: #fafafa; border-radius: 0 8px 8px 0;">'
+        '<span style="font-weight: 600; font-size: 1.05rem; color: #5a4030;">Mandarin Oriental Hotel Group</span>'
+        '<span style="color: #888; font-size: 0.82rem; margin-left: 16px;">'
+        '~38 properties in operation &middot; ~10 in pipeline</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    _mo_brands = [
+        ("Mandarin Oriental", "~38 properties",
+         "Ultra-luxury flagship brand; iconic city hotels and resorts across 25+ countries. "
+         "A subsidiary of Jardine Matheson (HKEX: 0011)."),
+        ("Mandarin Oriental Residences", "Select locations",
+         "Branded residential product co-located with hotel properties."),
+    ]
+    _mo_cols = st.columns(2)
+    for _j, (_bname, _bprops, _bdesc) in enumerate(_mo_brands):
+        with _mo_cols[_j]:
+            st.markdown(
+                f'<div class="brand-card">'
+                f'<div class="brand-name">{_bname}</div>'
+                f'<div class="brand-detail">{_bprops}</div>'
+                f'<div class="brand-detail" style="margin-top:4px; font-style:italic;">{_bdesc}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    st.caption(
+        "*Mandarin Oriental manages and co-invests in ultra-luxury hotels. "
+        "Detailed RevPAR and room-level financials are not publicly disclosed in a format comparable to the Big 5.*"
+    )
+
+    # Peninsula
+    st.markdown(
+        '<div style="background:#f8f8f8; border:1px solid #e0e0e0; border-radius:8px; '
+        'padding:12px 16px; margin:24px 0 8px 0; font-size:0.82rem; color:#555;">'
+        '<strong>The Peninsula Hotels</strong> &nbsp;(The Hongkong and Shanghai Hotels, HKEX: 0045) — '
+        '13 ultra-luxury hotels globally (~3,100 rooms), with flagship properties in Hong Kong, New York, Paris, and Tokyo. '
+        'The parent company also operates non-hotel assets including The Peak Tower and The Repulse Bay, '
+        'making hotel-only financial benchmarking impractical. Shown here for brand context only.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
     # ── Luxury News & Earnings Tracker ────────────────────────────────────────
     st.markdown("## Luxury News & Earnings Tracker")
 
@@ -1229,6 +1325,10 @@ with tab4:
     st.markdown(
         _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}", df_yoy=hotel_kpis, df_announced=announced_growth),
         unsafe_allow_html=True,
+    )
+    st.caption(
+        "*Reference: Shangri-La Group (HKEX: 0069) reported FY 2025 RevPAR of ~USD 111 and occupancy of ~64.7% "
+        "(owned/leased asset-heavy model — not directly comparable to Big 5 managed/franchised operations).*"
     )
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
