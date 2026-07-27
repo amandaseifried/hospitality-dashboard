@@ -650,6 +650,14 @@ with tab2:
         "*Q1 reflects all metrics announced by companies. "
         "IHG and Accor provide trading updates only, with half-year performance following in Q2.*"
     )
+    # IHG and Accor only give partial trading updates in Q1 and Q3, with full
+    # actuals in Q2 and Q4 (their half-year/full-year reports) — so this caveat
+    # only applies when the current quarter is Q1 or Q3.
+    _show_q1_cap = is_quarterly and int(CURR_QUARTERS[-1][1]) in (1, 3)
+
+    def _maybe_q1_cap():
+        if _show_q1_cap:
+            st.caption(_q1_cap)
 
     def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None, seq=False):
         """Compact comparison table: latest period value + change vs comparison period per brand.
@@ -749,7 +757,7 @@ with tab2:
         )
         _plot(fig)
         if is_quarterly:
-            st.caption(_q1_cap)
+            _maybe_q1_cap()
             st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
@@ -763,7 +771,7 @@ with tab2:
         )
         _plot(fig)
         if is_quarterly:
-            st.caption(_q1_cap)
+            _maybe_q1_cap()
             st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
@@ -779,7 +787,7 @@ with tab2:
         )
         _plot(fig)
         if is_quarterly:
-            st.caption(_q1_cap)
+            _maybe_q1_cap()
             st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
@@ -807,7 +815,7 @@ with tab2:
             )
         _plot(fig)
         if is_quarterly:
-            st.caption(_q1_cap)
+            _maybe_q1_cap()
             st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
@@ -830,7 +838,7 @@ with tab2:
         _margin_prev_df["EBITDA Margin (%)"] = (
             _margin_prev_df["Adj. EBITDA ($M)"] / _margin_prev_df["Revenue ($M)"] * 100
         )
-        st.caption(_q1_cap)
+        _maybe_q1_cap()
         st.markdown(_qoq_html(_margin_df, "EBITDA Margin (%)", fmt="{:.1f}", suffix="%",
                                as_pp=True, df_yoy=_margin_prev_df, df_announced=announced_growth),
                     unsafe_allow_html=True)
@@ -1271,10 +1279,11 @@ with tab4:
     st.markdown("## Quarterly RevPAR")
 
     _revpar_df = hotel_kpis[hotel_kpis["Quarter"].isin(_Q25)].copy()
-    _q1_reported = set(
-        _revpar_df[(_revpar_df["Quarter"] == "Q1 2026") & _revpar_df["RevPAR"].notna()]["Company"]
+    _curr_op_q = _Q25[-1]
+    _curr_op_reported = set(
+        _revpar_df[(_revpar_df["Quarter"] == _curr_op_q) & _revpar_df["RevPAR"].notna()]["Company"]
     )
-    _missing_q1 = [c for c in COMPANY_NAMES if c not in _q1_reported]
+    _missing_curr_op = [c for c in COMPANY_NAMES if c not in _curr_op_reported]
 
     fig_revpar = go.Figure()
     for _co in COMPANY_NAMES:
@@ -1317,7 +1326,7 @@ with tab4:
     )
     _plot(fig_revpar)
 
-    if _missing_q1:
+    if _missing_curr_op and int(_curr_op_q[1]) in (1, 3):
         st.caption(
             "*Q1 reflects all metrics announced by companies. "
             "IHG and Accor provide trading updates only, with half-year performance following in Q2.*"
@@ -1613,7 +1622,30 @@ with tab5:
                                    family="Inter, Helvetica, Arial, sans-serif")),
     )
     _plot(fig_loyalty)
-    st.caption("*2026 data reflects Q1 2026 reported figures. Accor has not yet reported Q1 2026 loyalty membership.*")
+
+    # Loyalty Members (M) in hotel_kpis is tracked per quarter, so it tells us
+    # each company's actual latest-reported quarter — the loyalty_historical.csv
+    # "current year" row doesn't carry a quarter label of its own.
+    _q_order = {q: i for i, q in enumerate(QUARTERS)}
+
+    def _latest_loyalty_quarter(_co):
+        _rows = hotel_kpis[
+            (hotel_kpis["Company"] == _co) & hotel_kpis["Loyalty Members (M)"].notna()
+        ]
+        if _rows.empty:
+            return None
+        return sorted(_rows["Quarter"], key=lambda q: _q_order.get(q, -1))[-1]
+
+    _dashboard_latest_q = QUARTERS[-1]
+    _loy_behind = [co for co in COMPANY_NAMES if _latest_loyalty_quarter(co) != _dashboard_latest_q]
+    if _loy_behind:
+        _verb = "has" if len(_loy_behind) == 1 else "have"
+        st.caption(
+            f"*Figures reflect each company's most recently reported quarter. "
+            f"{', '.join(_loy_behind)} {_verb} not yet reported {_dashboard_latest_q} loyalty membership.*"
+        )
+    else:
+        st.caption(f"*All figures reflect {_dashboard_latest_q} reported membership.*")
 
     # ── Current Loyalty Members ────────────────────────────────────────────────
     st.markdown("### Current Loyalty Members")
@@ -1626,15 +1658,18 @@ with tab5:
             _cur = _lco.iloc[-1]
             _cur_yr = int(_cur["Year"])
             _cur_m  = float(_cur["Loyalty Members (M)"])
-            _period = f"Q1 {_cur_yr}" if _cur_yr >= 2026 else f"FY {_cur_yr}"
+            _co_latest_q = _latest_loyalty_quarter(_co)
+            _period = (
+                _co_latest_q if _co_latest_q and int(_co_latest_q.split()[1]) == _cur_yr
+                else f"FY {_cur_yr}"
+            )
             _delta = None
             if len(_lco) >= 2:
                 _prev_m = float(_lco.iloc[-2]["Loyalty Members (M)"])
                 _pct = (_cur_m - _prev_m) / _prev_m * 100
                 sign = "+" if _pct >= 0 else ""
                 _prev_yr = int(_lco.iloc[-2]["Year"])
-                _prev_period = f"Q1 {_prev_yr}" if _prev_yr >= 2026 else f"FY {_prev_yr}"
-                _delta = f"{sign}{_pct:.1f}% vs {_prev_period}"
+                _delta = f"{sign}{_pct:.1f}% vs FY {_prev_yr}"
             st.metric(f"{_co} ({_period})", f"{_cur_m:.0f}M", delta=_delta)
 
     # ── Loyalty Room Night Contribution ──────────────────────────────────────
@@ -1717,8 +1752,12 @@ with tab5:
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
-    # ── Digital Engagement — Q4 2025 ─────────────────────────────────────────
-    st.markdown("## Digital Engagement — Q4 2025")
+    # ── Digital Engagement — latest reported quarter ──────────────────────────
+    _dig_latest_q = next(
+        (q for q in reversed(QUARTERS) if q in digital_trends["Quarter"].values),
+        QUARTERS[-1],
+    )
+    st.markdown(f"## Digital Engagement — {_dig_latest_q}")
 
     st.markdown(
         '<div style="background:#f5f7fa; border:1px solid #dde4ef; border-radius:8px; '
@@ -1736,9 +1775,9 @@ with tab5:
         unsafe_allow_html=True,
     )
 
-    _q4_dig = digital_trends[digital_trends["Quarter"] == "Q4 2025"]
-    if not _q4_dig.empty:
-        for _, _row in _q4_dig.iterrows():
+    _dig_rows = digital_trends[digital_trends["Quarter"] == _dig_latest_q]
+    if not _dig_rows.empty:
+        for _, _row in _dig_rows.iterrows():
             _co = _row["Company"]
             _col = COLORS.get(_co, "#888")
             st.markdown(
