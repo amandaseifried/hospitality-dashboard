@@ -6,6 +6,8 @@ data/market_metrics.csv and updated manually each quarter from earnings reports,
 since Yahoo's quoteSummary endpoint is rate-limited on cloud IPs.
 """
 
+from __future__ import annotations
+
 import requests
 import pandas as pd
 import yfinance as yf

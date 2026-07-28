@@ -1753,8 +1753,11 @@ with tab5:
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
     # ── Digital Engagement — latest reported quarter ──────────────────────────
+    _dig_metric_cols = ["Mobile App Rating", "Digital Check-in %", "Direct Booking %"]
+    _dig_has_data = digital_trends[_dig_metric_cols].notna().any(axis=1)
+    _dig_quarters_with_data = set(digital_trends.loc[_dig_has_data, "Quarter"])
     _dig_latest_q = next(
-        (q for q in reversed(QUARTERS) if q in digital_trends["Quarter"].values),
+        (q for q in reversed(QUARTERS) if q in _dig_quarters_with_data),
         QUARTERS[-1],
     )
     st.markdown(f"## Digital Engagement — {_dig_latest_q}")
@@ -1789,14 +1792,14 @@ with tab5:
             )
             _mc = st.columns(4)
             with _mc[0]:
-                st.metric("App Rating", f"{_row['Mobile App Rating']}/5.0")
+                st.metric("App Rating", f"{_row['Mobile App Rating']}/5.0" if pd.notna(_row['Mobile App Rating']) else "—")
             with _mc[1]:
-                st.metric("Digital Check-in", f"{_row['Digital Check-in %']}%")
+                st.metric("Digital Check-in", f"{_row['Digital Check-in %']}%" if pd.notna(_row['Digital Check-in %']) else "—")
             with _mc[2]:
-                st.metric("Direct Booking", f"{_row['Direct Booking %']}%")
+                st.metric("Direct Booking", f"{_row['Direct Booking %']}%" if pd.notna(_row['Direct Booking %']) else "—")
             with _mc[3]:
                 st.caption("Key Initiative")
-                st.markdown(f"*{_row['Key Initiative']}*")
+                st.markdown(f"*{_row['Key Initiative']}*" if pd.notna(_row['Key Initiative']) else "*—*")
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
