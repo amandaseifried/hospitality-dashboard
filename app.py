@@ -659,6 +659,22 @@ with tab2:
         if _show_q1_cap:
             st.caption(_q1_cap)
 
+    # IHG and Accor only disclose Adj. EBITDA, Net Income, and EPS on a half-
+    # year/full-year cumulative basis — never broken out for a standalone
+    # quarter, even in Q2/Q4 when Revenue and Fee Revenue do get a clean
+    # quarterly split. Show this note whenever the Q1/Q3 trading-update
+    # caption above isn't already covering the same gap.
+    _h1_only_cap = (
+        "*IHG and Accor disclose Adjusted EBITDA, Net Income, and EPS only on a "
+        "half-year/full-year cumulative basis — a standalone figure for this "
+        "quarter is not available from their reporting, not just delayed.*"
+    )
+    _show_h1_only_cap = is_quarterly and not _show_q1_cap
+
+    def _maybe_h1_only_cap():
+        if _show_h1_only_cap:
+            st.caption(_h1_only_cap)
+
     def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None, seq=False):
         """Compact comparison table: latest period value + change vs comparison period per brand.
         seq=False (default): compare to same quarter prior year (YoY).
@@ -788,6 +804,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             _maybe_q1_cap()
+            _maybe_h1_only_cap()
             st.markdown(_qoq_html(df_curr, "Adj. EBITDA ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
@@ -816,6 +833,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             _maybe_q1_cap()
+            _maybe_h1_only_cap()
             st.markdown(_qoq_html(df_curr, "Adj. EPS", fmt="{:.2f}", df_yoy=df_prev, df_announced=announced_growth),
                         unsafe_allow_html=True)
 
@@ -839,6 +857,7 @@ with tab2:
             _margin_prev_df["Adj. EBITDA ($M)"] / _margin_prev_df["Revenue ($M)"] * 100
         )
         _maybe_q1_cap()
+        _maybe_h1_only_cap()
         st.markdown(_qoq_html(_margin_df, "EBITDA Margin (%)", fmt="{:.1f}", suffix="%",
                                as_pp=True, df_yoy=_margin_prev_df, df_announced=announced_growth),
                     unsafe_allow_html=True)
