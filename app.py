@@ -18,7 +18,7 @@ from utils.data_loader import (
     load_hotel_kpis, load_hotel_financials_annual,
     load_luxury_brands, load_luxury_news, load_digital_trends,
     load_loyalty_historical, load_digital_news, load_announced_growth,
-    get_latest_quarter, get_latest_per_company, get_logo_path
+    load_derived_figures, get_latest_quarter, get_latest_per_company, get_logo_path
 )
 import calendar as _calendar
 from utils.charts import (
@@ -383,6 +383,7 @@ digital_trends = load_digital_trends()
 loyalty_historical = load_loyalty_historical()
 digital_news = load_digital_news()
 announced_growth = load_announced_growth()
+derived_figures = load_derived_figures()
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -675,10 +676,13 @@ with tab2:
         if _show_h1_only_cap:
             st.caption(_h1_only_cap)
 
-    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None, seq=False):
+    def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None, seq=False, df_derived=None):
         """Compact comparison table: latest period value + change vs comparison period per brand.
         seq=False (default): compare to same quarter prior year (YoY).
         seq=True: compare to previous sequential quarter (QoQ).
+        df_derived: optional lookup (Company, Quarter, Metric, Note) flagging cells that are
+        calculated rather than stated directly in the source — marked with a dagger + tooltip
+        rather than shown as if quoted verbatim from the company's release.
         """
         if len(period_order) < 1:
             return ""
@@ -696,6 +700,7 @@ with tab2:
         _td  = "padding:4px 8px; border-bottom:1px solid #f5f5f5;"
         _tdr = _td + " text-align:right; font-variant-numeric:tabular-nums;"
         rows = ""
+        _any_derived = False
         for co in COMPANY_NAMES:
             cdf = df[df["Company"] == co]
             cr  = cdf[cdf["Quarter"] == curr_q]
@@ -723,11 +728,28 @@ with tab2:
                 _ann = df_announced[_mask]
                 if not _ann.empty and pd.notna(_ann.iloc[0]["Growth"]):
                     ann_row = _ann.iloc[0]
+            # Check whether this cell is a derived (calculated, not stated) figure
+            _derived_note = None
+            if df_derived is not None and cv is not None:
+                _dmask = (
+                    (df_derived["Company"] == co) &
+                    (df_derived["Quarter"] == curr_q) &
+                    (df_derived["Metric"] == metric)
+                )
+                _drow = df_derived[_dmask]
+                if not _drow.empty:
+                    _derived_note = _drow.iloc[0]["Note"]
+                    _any_derived = True
             if cv is None:
                 val_td = f'<td style="{_tdr} color:#ccc;">—</td>'
                 chg_td = f'<td style="{_tdr} color:#bbb; font-size:0.75rem; font-style:italic;">not yet reported</td>'
             else:
-                val_td = f'<td style="{_tdr}">{fmt.format(cv)}{suffix}</td>'
+                _marker = (
+                    f'<span title="Derived: {_derived_note}" '
+                    f'style="color:#b8860b; cursor:help; font-weight:700;"> †</span>'
+                    if _derived_note else ""
+                )
+                val_td = f'<td style="{_tdr}">{fmt.format(cv)}{suffix}{_marker}</td>'
                 if ann_row is not None:
                     g = float(ann_row["Growth"])
                     sign = "+" if g >= 0 else ""
@@ -751,6 +773,13 @@ with tab2:
                     chg_td = f'<td style="{_tdr} color:#ccc;">—</td>'
             rows += (f'<tr><td style="{_td} font-weight:600; color:{col};">{co}</td>'
                      f'{val_td}{chg_td}</tr>')
+        _footnote = (
+            f'<div style="font-size:0.72rem; color:#b8860b; margin-top:2px;">'
+            f'† Calculated by subtracting an already-reported prior period from a disclosed '
+            f'cumulative total — not a figure the company stated directly for this quarter '
+            f'alone. Hover the marker for the specific calculation.</div>'
+            if _any_derived else ""
+        )
         return (
             f'<div style="margin:2px 0 12px 0;">'
             f'<table style="width:100%; border-collapse:collapse; {_fs}">'
@@ -758,7 +787,7 @@ with tab2:
             f'<th style="{_th} text-align:left;">Brand</th>'
             f'<th style="{_th} text-align:right;">{curr_q}</th>'
             f'<th style="{_th} text-align:right;">vs {cmp_q}</th>'
-            f'</tr></thead><tbody>{rows}</tbody></table></div>'
+            f'</tr></thead><tbody>{rows}</tbody></table>{_footnote}</div>'
         )
 
     col1, col2 = st.columns(2)
@@ -774,7 +803,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             _maybe_q1_cap()
-            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
+            st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth, df_derived=derived_figures),
                         unsafe_allow_html=True)
 
     with col2:
@@ -788,7 +817,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             _maybe_q1_cap()
-            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth),
+            st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth, df_derived=derived_figures),
                         unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)

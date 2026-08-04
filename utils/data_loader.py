@@ -97,6 +97,17 @@ def load_announced_growth() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=600)
+def load_derived_figures() -> pd.DataFrame:
+    """(Company, Quarter, Metric) cells in hotel_kpis.csv that are calculated
+    rather than a number stated directly in the company's own release —
+    e.g. a quarter obtained by subtracting an already-reported prior period
+    from a disclosed cumulative total. Used to mark such cells in the UI so
+    they aren't mistaken for a figure quoted verbatim from the source."""
+    path = os.path.join(DATA_DIR, "derived_figures.csv")
+    return pd.read_csv(path, encoding="utf-8").dropna(how="all")
+
+
 def get_latest_quarter(df: pd.DataFrame) -> pd.DataFrame:
     available = [q for q in QUARTERS if q in df["Quarter"].values]
     if not available:
