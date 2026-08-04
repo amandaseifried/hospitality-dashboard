@@ -1622,11 +1622,6 @@ with tab4:
         st.markdown(_op_qoq_html(hotel_kpis, "Net Unit Growth %", _Q25, fmt="{:.1f}", suffix="%",
                                  seq=True),
                     unsafe_allow_html=True)
-    with col2:
-        st.markdown("**Loyalty Members**")
-        st.markdown(_op_qoq_html(hotel_kpis, "Loyalty Members (M)", _Q25, fmt="{:.0f}", suffix="M",
-                                 seq=True),
-                    unsafe_allow_html=True)
 
     render_sources("operational_overview")
 
