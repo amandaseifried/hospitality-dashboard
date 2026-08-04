@@ -43,7 +43,7 @@ SOURCES = {
         ("Accor Finance", "https://group.accor.com/en/finance"),
     ],
     "financial_overview": [
-        ("Marriott Q4 & FY 2025 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-fourth-quarter-and-full-year-2025"),
+        ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
         ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
         ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
         ("IHG FY 2025 Full Year Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations/2026/full-year-results-for-the-year-to-31-dec-2025"),
@@ -57,7 +57,7 @@ SOURCES = {
         ("Accor Brands", "https://group.accor.com/en/brands"),
     ],
     "operational_overview": [
-        ("Marriott Q4 & FY 2025 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-fourth-quarter-and-full-year-2025"),
+        ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
         ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
         ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
         ("IHG FY 2025 Full Year Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations/2026/full-year-results-for-the-year-to-31-dec-2025"),
