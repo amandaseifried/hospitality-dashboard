@@ -73,7 +73,7 @@ SOURCES = {
     ],
 }
 
-DASHBOARD_LAST_UPDATED = "May 7, 2026"
+DASHBOARD_LAST_UPDATED = "August 4, 2026"
 
 
 def render_sources(key):
