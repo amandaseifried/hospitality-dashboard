@@ -46,7 +46,7 @@ SOURCES = {
         ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
         ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
         ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
-        ("IHG FY 2025 Full Year Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations/2026/full-year-results-for-the-year-to-31-dec-2025"),
+        ("IHG H1 2026 Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations"),
         ("Accor H1 2026 Results", "https://group.accor.com/en/finance/financial-results"),
     ],
     "luxury_overview": [
@@ -60,7 +60,7 @@ SOURCES = {
         ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
         ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
         ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
-        ("IHG FY 2025 Full Year Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations/2026/full-year-results-for-the-year-to-31-dec-2025"),
+        ("IHG H1 2026 Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations"),
         ("Accor H1 2026 Results", "https://group.accor.com/en/finance/financial-results"),
     ],
     "digital_trends": [
@@ -662,19 +662,32 @@ with tab2:
 
     # IHG and Accor only disclose Adj. EBITDA, Net Income, and EPS on a half-
     # year/full-year cumulative basis — never broken out for a standalone
-    # quarter, even in Q2/Q4 when Revenue and Fee Revenue do get a clean
-    # quarterly split. Show this note whenever the Q1/Q3 trading-update
-    # caption above isn't already covering the same gap.
+    # quarter, even in Q2/Q4 when Accor's Revenue and Fee Revenue do get a
+    # derived quarterly split (marked with †). IHG doesn't even get that far:
+    # its Q1 is a pure operational trading update with zero financials, so
+    # there's no baseline to derive Q2 from — Revenue and Fee Revenue are
+    # blocked for IHG specifically, not just EBITDA/EPS. Show these notes
+    # whenever the Q1/Q3 trading-update caption above isn't already covering
+    # the same gap.
     _h1_only_cap = (
         "*IHG and Accor disclose Adjusted EBITDA, Net Income, and EPS only on a "
         "half-year/full-year cumulative basis — a standalone figure for this "
         "quarter is not available from their reporting, not just delayed.*"
+    )
+    _ihg_revenue_cap = (
+        "*IHG's Q1 is a revenue-only trading update with no financials at all, so "
+        "unlike Accor there's no prior-quarter baseline to derive Q2 Revenue or Fee "
+        "Revenue from — both remain unavailable until IHG's next full report.*"
     )
     _show_h1_only_cap = is_quarterly and not _show_q1_cap
 
     def _maybe_h1_only_cap():
         if _show_h1_only_cap:
             st.caption(_h1_only_cap)
+
+    def _maybe_ihg_revenue_cap():
+        if _show_h1_only_cap:
+            st.caption(_ihg_revenue_cap)
 
     def _qoq_html(df, metric, fmt="{:,.1f}", suffix="", as_pp=False, df_yoy=None, df_announced=None, seq=False, df_derived=None):
         """Compact comparison table: latest period value + change vs comparison period per brand.
@@ -803,6 +816,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             _maybe_q1_cap()
+            _maybe_ihg_revenue_cap()
             st.markdown(_qoq_html(df_curr, "Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth, df_derived=derived_figures),
                         unsafe_allow_html=True)
 
@@ -817,6 +831,7 @@ with tab2:
         _plot(fig)
         if is_quarterly:
             _maybe_q1_cap()
+            _maybe_ihg_revenue_cap()
             st.markdown(_qoq_html(df_curr, "Fee Revenue ($M)", fmt="{:,.0f}", suffix="M", df_yoy=df_prev, df_announced=announced_growth, df_derived=derived_figures),
                         unsafe_allow_html=True)
 
