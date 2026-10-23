@@ -46,8 +46,8 @@ SOURCES = {
         ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
         ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
         ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
-        ("IHG H1 2026 Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations"),
-        ("Accor H1 2026 Results", "https://group.accor.com/en/finance/financial-results"),
+        ("IHG Q3 2026 Trading Update", "https://www.ihgplc.com/en/news-and-media/news-releases/2026/third-quarter-trading-update-to-30-september-2026"),
+        ("Accor Q3 2026 Revenue", "https://press.accor.com/third-quarter-2026-accor-upgrades-its-ebitda-guidance/?lang=eng"),
     ],
     "luxury_overview": [
         ("Marriott Brands", "https://www.marriott.com/marriott-brands.mi"),
@@ -60,8 +60,8 @@ SOURCES = {
         ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
         ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
         ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
-        ("IHG H1 2026 Results", "https://www.ihgplc.com/en/investors/results-reports-and-presentations"),
-        ("Accor H1 2026 Results", "https://group.accor.com/en/finance/financial-results"),
+        ("IHG Q3 2026 Trading Update", "https://www.ihgplc.com/en/news-and-media/news-releases/2026/third-quarter-trading-update-to-30-september-2026"),
+        ("Accor Q3 2026 Revenue", "https://press.accor.com/third-quarter-2026-accor-upgrades-its-ebitda-guidance/?lang=eng"),
     ],
     "digital_trends": [
         ("Marriott Bonvoy", "https://www.marriott.com/loyalty.mi"),
@@ -73,7 +73,18 @@ SOURCES = {
     ],
 }
 
-DASHBOARD_LAST_UPDATED = "August 12, 2026"
+DASHBOARD_LAST_UPDATED = "October 23, 2026"
+
+
+def _trading_update_caption(quarter):
+    """Caveat for Q1/Q3, when IHG and Accor publish trading updates only —
+    full actuals follow in their half-year (Q2) or full-year (Q4) report."""
+    qn = int(quarter[1])
+    follow = "half-year performance following in Q2" if qn == 1 else "full-year results following in Q4"
+    return (
+        f"*Q{qn} reflects all metrics announced by companies. "
+        f"IHG and Accor provide trading updates only, with {follow}.*"
+    )
 
 
 def render_sources(key):
@@ -647,10 +658,7 @@ with tab2:
         chart_prefix = "Annual"
 
     # ── Four combo charts (growth lines on annual only) ───────────────────────
-    _q1_cap = (
-        "*Q1 reflects all metrics announced by companies. "
-        "IHG and Accor provide trading updates only, with half-year performance following in Q2.*"
-    )
+    _q1_cap = _trading_update_caption(CURR_QUARTERS[-1]) if is_quarterly else ""
     # IHG and Accor only give partial trading updates in Q1 and Q3, with full
     # actuals in Q2 and Q4 (their half-year/full-year reports) — so this caveat
     # only applies when the current quarter is Q1 or Q3.
@@ -674,9 +682,10 @@ with tab2:
         "half-year/full-year cumulative basis — a standalone figure for this "
         "quarter is not available from their reporting, not just delayed.*"
     )
+    _curr_qn = int(CURR_QUARTERS[-1][1]) if is_quarterly else 0
     _ihg_revenue_cap = (
-        "*IHG's Q1 is a revenue-only trading update with no financials at all, so "
-        "unlike Accor there's no prior-quarter baseline to derive Q2 Revenue or Fee "
+        f"*IHG's Q{_curr_qn - 1} is a revenue-only trading update with no financials at all, so "
+        f"unlike Accor there's no prior-quarter baseline to derive Q{_curr_qn} Revenue or Fee "
         "Revenue from — both remain unavailable until IHG's next full report.*"
     )
     _show_h1_only_cap = is_quarterly and not _show_q1_cap
@@ -1390,10 +1399,7 @@ with tab4:
     _plot(fig_revpar)
 
     if _missing_curr_op and int(_curr_op_q[1]) in (1, 3):
-        st.caption(
-            "*Q1 reflects all metrics announced by companies. "
-            "IHG and Accor provide trading updates only, with half-year performance following in Q2.*"
-        )
+        st.caption(_trading_update_caption(_curr_op_q))
     st.markdown(
         _op_qoq_html(_revpar_df, "RevPAR", _Q25, fmt="${:.2f}", df_yoy=hotel_kpis, df_announced=announced_growth),
         unsafe_allow_html=True,
