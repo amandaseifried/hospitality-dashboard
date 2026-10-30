@@ -44,8 +44,8 @@ SOURCES = {
     ],
     "financial_overview": [
         ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
-        ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
-        ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
+        ("Hilton Q3 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-third-quarter-results"),
+        ("Hyatt Q3 2026 Earnings Release (8-K)", "https://www.sec.gov/Archives/edgar/data/0001468174/000146817426000029/q32026earningsrelease.htm"),
         ("IHG Q3 2026 Trading Update", "https://www.ihgplc.com/en/news-and-media/news-releases/2026/third-quarter-trading-update-to-30-september-2026"),
         ("Accor Q3 2026 Revenue", "https://press.accor.com/third-quarter-2026-accor-upgrades-its-ebitda-guidance/?lang=eng"),
     ],
@@ -58,8 +58,8 @@ SOURCES = {
     ],
     "operational_overview": [
         ("Marriott Q2 2026 Earnings Release", "https://marriott.gcs-web.com/news-releases/news-release-details/marriott-international-reports-second-quarter-2026-results"),
-        ("Hilton Q2 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-second-quarter-results"),
-        ("Hyatt Q2 2026 Earnings Release", "https://newsroom.hyatt.com/Q2-2026-Earnings"),
+        ("Hilton Q3 2026 Earnings Release", "https://stories.hilton.com/releases/hilton-reports-2026-third-quarter-results"),
+        ("Hyatt Q3 2026 Earnings Release (8-K)", "https://www.sec.gov/Archives/edgar/data/0001468174/000146817426000029/q32026earningsrelease.htm"),
         ("IHG Q3 2026 Trading Update", "https://www.ihgplc.com/en/news-and-media/news-releases/2026/third-quarter-trading-update-to-30-september-2026"),
         ("Accor Q3 2026 Revenue", "https://press.accor.com/third-quarter-2026-accor-upgrades-its-ebitda-guidance/?lang=eng"),
     ],
@@ -73,7 +73,7 @@ SOURCES = {
     ],
 }
 
-DASHBOARD_LAST_UPDATED = "October 23, 2026"
+DASHBOARD_LAST_UPDATED = "October 30, 2026"
 
 
 def _trading_update_caption(quarter):
